@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de IA - ProNatura</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4D8143;
+            text-align: center;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .button {
+            background: #4D8143;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #3d6a35;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.success {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            color: #2e7d32;
+        }
+        .result.error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .step-number {
+            display: inline-block;
+            background: #4D8143;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Prueba de IA - ProNatura</h1>
+        
+        <div class="instructions">
+            <h2>Instrucciones para probar la IA:</h2>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Abre el Panel de Administración:</strong>
+                <p>Abre esta URL en tu navegador:</p>
+                <div class="code-block">http://localhost/pronatura/pages/admin.html</div>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Inicia sesión como administrador</strong>
+                <p>Necesitas estar autenticado para probar la IA.</p>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Abre la consola del navegador</strong>
+                <p>Presiona <kbd>F12</kbd> o <kbd>Ctrl+Shift+I</kbd> para abrir las herramientas de desarrollador.</p>
+                <p>Ve a la pestaña "Console" (Consola).</p>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Ejecuta la función de prueba</strong>
+                <p>Escribe en la consola y presiona Enter:</p>
+                <div class="code-block">probarIA()</div>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>Revisa los resultados</strong>
+                <p>La función mostrará un resumen en la consola y una alerta con el resultado.</p>
+                <p>También puedes probar la IA visualmente:</p>
+                <ul>
+                    <li>Ve a la pestaña "Usuarios" en el panel de administración</li>
+                    <li>Haz clic en "Dar Advertencia" o "Dar Ban" en cualquier usuario</li>
+                    <li>Deberías ver automáticamente las sugerencias de IA en una caja azul</li>
+                </ul>
+            </div>
+        </div>
+        
+        <button class="button" onclick="abrirAdmin()">Abrir Panel de Administración</button>
+        
+        <div id="result" class="result"></div>
+    </div>
+    
+    <script>
+        function abrirAdmin() {
+            window.open('http://localhost/pronatura/pages/admin.html', '_blank');
+        }
+        
+        // Mostrar mensaje si estamos en la página de admin
+        if (window.location.href.indexOf('admin.html') !== -1) {
+            console.log('✅ Estás en la página de administración');
+            console.log('💡 Ejecuta probarIA() en la consola para probar la IA');
+        }
+    </script>
+</body>
+</html>
+

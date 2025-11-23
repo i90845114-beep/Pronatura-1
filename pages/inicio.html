@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Herramienta de contraloría social para la consevacion de la biodiversidad - Protección de Fauna Silvestre Tamaulipas</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4D8143">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProNatura">
+    <meta name="description" content="Sistema de registro ambiental y control social para la conservación de la biodiversidad">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="../manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="../assets/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="../assets/icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="../assets/icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="../assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="../assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="../assets/icons/icon-384x384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="../assets/icons/icon-512x512.png">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌿%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../assets/css/styles.css" id="cssLink">
+    <script>
+        // LIMPIAR SESIÓN INMEDIATAMENTE - Esto debe ejecutarse ANTES de cualquier otro código
+        // para asegurar que inicio.html siempre aparezca sin sesión guardada
+        (function() {
+            try {
+                sessionStorage.removeItem('current_session');
+                localStorage.removeItem('current_session');
+                sessionStorage.removeItem('index_acceso_permitido'); // Limpiar flag de acceso permitido
+                console.log('🧹 Sesión limpiada INMEDIATAMENTE al cargar inicio.html');
+            } catch (error) {
+                console.error('❌ Error al limpiar sesión:', error);
+            }
+        })();
+
+        // Corregir ruta del CSS para Hostinger
+        (function() {
+            var currentUrl = window.location.href.toLowerCase();
+            var cssLink = document.getElementById('cssLink');
+            if (cssLink && (currentUrl.indexOf('hostinger') !== -1 || 
+                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                           currentUrl.indexOf('organicjournal.com.mx') !== -1)) {
+                cssLink.href = '/assets/css/styles.css';
+            }
+        })();
+    </script>
+
+    <style>
+
+        .landing-page {
+
+            min-height: 100vh;
+
+            background: linear-gradient(135deg, #4D8143 0%, #4D8143 100%);
+
+            color: white;
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 2rem;
+
+            text-align: center;
+
+        }
+
+        
+
+        .landing-title {
+
+            font-size: 3rem;
+
+            margin-bottom: 1rem;
+
+            font-weight: 700;
+
+        }
+
+        
+
+        .landing-subtitle {
+
+            font-size: 1.5rem;
+
+            margin-bottom: 4rem;
+
+            opacity: 0.9;
+
+        }
+
+        
+
+        .how-it-works {
+
+            background: white;
+
+            color: #333;
+
+            padding: 4rem 2rem;
+
+            width: 100%;
+
+            max-width: 1200px;
+
+            border-radius: 12px;
+
+            margin-bottom: 3rem;
+
+        }
+
+        
+
+        .how-it-works h2 {
+
+            font-size: 2.5rem;
+
+            margin-bottom: 3rem;
+
+            color: #4D8143;
+
+        }
+
+        
+
+        .steps-container {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+
+            gap: 3rem;
+
+            margin-bottom: 3rem;
+
+        }
+
+        
+
+        .step {
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            text-align: center;
+
+        }
+
+        
+
+        .step-number {
+
+            width: 60px;
+
+            height: 60px;
+
+            border-radius: 50%;
+
+            background: #e0e0e0;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 2rem;
+
+            font-weight: 600;
+
+            margin-bottom: 1.5rem;
+
+            color: #333;
+
+        }
+
+        
+
+        .step h3 {
+
+            font-size: 1.5rem;
+
+            margin-bottom: 1rem;
+
+            color: #4D8143;
+
+        }
+
+        
+
+        .step p {
+
+            font-size: 1.1rem;
+
+            color: #666;
+
+            line-height: 1.6;
+
+        }
+
+        
+
+        .cta-section {
+
+            margin-top: 3rem;
+
+        }
+
+        
+
+        .cta-question {
+
+            font-size: 1.8rem;
+
+            margin-bottom: 2rem;
+
+            color: white;
+
+        }
+
+        
+
+        .cta-button {
+
+            padding: 1rem 3rem;
+
+            background: #4D8143;
+
+            color: white;
+
+            border: none;
+
+            border-radius: 25px;
+
+            font-size: 1.2rem;
+
+            font-weight: 600;
+
+            cursor: pointer;
+
+            transition: all 0.3s;
+
+            text-decoration: none;
+
+            display: inline-block;
+
+            position: relative;
+
+            z-index: 10;
+
+            pointer-events: auto;
+
+        }
+
+        
+
+        .cta-button:hover {
+
+            background: #4e2f07;
+
+            transform: translateY(-3px);
+
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
+        }
+
+        .admin-link {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .admin-link a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .admin-link a:hover {
+            color: white;
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Estilos para el modal de verificación de email */
+        .email-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .email-modal.show {
+            display: flex;
+        }
+
+        .email-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .email-modal-content h2 {
+            color: #4D8143;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .email-modal-content p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+
+        .email-modal-content input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .email-modal-content input:focus {
+            outline: none;
+            border-color: #4D8143;
+        }
+
+        .email-modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .email-modal-buttons button {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .email-modal-buttons .btn-primary {
+            background: #4D8143;
+            color: white;
+        }
+
+        .email-modal-buttons .btn-primary:hover {
+            background: #3d6a35;
+        }
+
+        .email-modal-buttons .btn-primary:disabled {
+            background: #9e9e9e;
+            cursor: not-allowed;
+        }
+
+        .email-modal-buttons .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .email-modal-buttons .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .email-modal .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .email-modal .error-message.show {
+            display: block;
+        }
+
+        .email-modal .loading {
+            display: none;
+            color: #4D8143;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .email-modal .loading.show {
+            display: block;
+        }
+
+        .email-modal-content input[readonly] {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        #loginView input {
+            margin-bottom: 1rem;
+        }
+
+        /* Estilos para ver/ocultar contraseña */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #666;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s;
+        }
+
+        .password-toggle:hover {
+            color: #4D8143;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+
+        /* Responsive para móviles */
+        @media (max-width: 768px) {
+            .landing-page {
+                padding: 1rem;
+            }
+
+            .landing-title {
+                font-size: 1.8rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .landing-subtitle {
+                font-size: 1.1rem;
+                margin-bottom: 2rem;
+            }
+
+            .how-it-works {
+                padding: 2rem 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .how-it-works h2 {
+                font-size: 1.8rem;
+                margin-bottom: 2rem;
+            }
+
+            .steps-container {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .step-number {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+
+            .step h3 {
+                font-size: 1.2rem;
+            }
+
+            .step p {
+                font-size: 1rem;
+            }
+
+            .cta-question {
+                font-size: 1.3rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .cta-button {
+                padding: 0.9rem 2rem;
+                font-size: 1rem;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .email-modal-content {
+                padding: 1.5rem;
+                max-width: 95%;
+                width: 95%;
+            }
+
+            .email-modal-content h2 {
+                font-size: 1.5rem;
+            }
+
+            .email-modal-content input {
+                font-size: 16px; /* Previene zoom en iOS */
+            }
+
+            .email-modal-buttons {
+                flex-direction: column;
+            }
+
+            .email-modal-buttons button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .landing-title {
+                font-size: 1.5rem;
+            }
+
+            .landing-subtitle {
+                font-size: 1rem;
+            }
+
+            .how-it-works {
+                padding: 1.5rem 0.8rem;
+            }
+
+            .how-it-works h2 {
+                font-size: 1.5rem;
+            }
+
+            .step-number {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+
+            .cta-button {
+                padding: 0.8rem 1.5rem;
+                font-size: 0.95rem;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="landing-page">
+
+        <h1 class="landing-title">Herramienta de contraloría social para la consevacion de la biodiversidad</h1>
+
+        <p class="landing-subtitle">Protección de Fauna Silvestre de Tamaulipas</p>
+
+        
+
+        <div class="how-it-works">
+
+            <h2>Cómo Funciona</h2>
+
+            
+
+            <div class="steps-container">
+
+                <div class="step">
+
+                    <div class="step-number">1</div>
+
+                    <h3>Registra tu Reporte</h3>
+
+                    <p>Añade tu nombre, tipo de Reporte, fecha y cualquier nota relevante y una breve descripcion tecnica.</p>
+
+                </div>
+
+                
+
+                <div class="step">
+
+                    <div class="step-number">2</div>
+
+                    <h3>Ubica en el mapa</h3>
+
+                    <p>Marca la ubicación exacta.</p>
+
+                </div>
+
+                
+
+                <div class="step">
+
+                    <div class="step-number">3</div>
+
+                    <h3>Consulta tu catálogo</h3>
+
+                    <p>Revisa y administra todos tus registros en cualquier momento.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        
+
+        <div class="cta-section">
+
+            <p class="cta-question">¿Listo para comenzar a registrar?</p>
+
+            <button type="button" class="cta-button" id="loginButton">Comenzar</button>
+
+            <div class="admin-link">
+                <a href="admin-login.html">
+                    <span>⚙️</span>
+                    <span>Acceso Administrador</span>
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Modal de verificación de email -->
+    <div id="emailModal" class="email-modal">
+        <div class="email-modal-content">
+            <!-- Vista de verificación de email -->
+            <div id="emailVerificationView">
+                <h2>¿Ya tienes cuenta?</h2>
+                <p>Ingresa tu correo electrónico para continuar</p>
+                <div id="emailModalError" class="error-message"></div>
+                <div id="emailModalLoading" class="loading">Verificando...</div>
+                <input type="email" id="emailInput" placeholder="correo@ejemplo.com" autocomplete="email">
+                <div class="email-modal-buttons">
+                    <button type="button" class="btn-primary" id="verifyEmailBtn">Continuar</button>
+                    <button type="button" class="btn-secondary" id="cancelEmailBtn">Cancelar</button>
+                </div>
+            </div>
+            
+            <!-- Vista de inicio de sesión (se muestra cuando el email existe) -->
+            <div id="loginView" style="display: none;">
+                <h2>Iniciar Sesión</h2>
+                <p>Ingresa tu contraseña para continuar</p>
+                <div id="loginModalError" class="error-message"></div>
+                <div id="loginModalLoading" class="loading">Iniciando sesión...</div>
+                <input type="email" id="loginEmailInput" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+                <div class="password-wrapper">
+                    <input type="password" id="loginPasswordInput" placeholder="Contraseña" autocomplete="current-password">
+                    <button type="button" class="password-toggle" onclick="togglePassword('loginPasswordInput', this)" aria-label="Mostrar contraseña">
+                        👁️
+                    </button>
+                </div>
+                <div style="margin-bottom: 1rem; text-align: center;">
+                    <a href="recuperar-contraseña.html" style="color: #666; font-size: 0.9rem; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+                </div>
+                <div class="email-modal-buttons">
+                    <button type="button" class="btn-primary" id="loginSubmitBtn">Iniciar Sesión</button>
+                    <button type="button" class="btn-secondary" id="backToEmailBtn">Volver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Limpiar sesión INMEDIATAMENTE al cargar inicio.html para que siempre aparezca sin sesión guardada
+        // Esto debe ejecutarse ANTES de cualquier otro script
+        (function() {
+            try {
+                sessionStorage.removeItem('current_session');
+                localStorage.removeItem('current_session'); // Limpiar también localStorage por compatibilidad
+                console.log('🧹 Sesión limpiada al cargar inicio.html');
+            } catch (error) {
+                console.error('❌ Error al limpiar sesión:', error);
+            }
+        })();
+
+        // Cargar auth.js con detección de entorno
+        (function() {
+            var currentUrl = window.location.href.toLowerCase();
+            var isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                             currentUrl.indexOf('hostingersite.com') !== -1 ||
+                             currentUrl.indexOf('organicjournal.com.mx') !== -1;
+            
+            var script = document.createElement('script');
+            script.id = 'authScript';
+            
+            if (isHostinger) {
+                // Usar ruta absoluta desde la raíz del dominio
+                script.src = '/assets/js/auth.js?v=' + Date.now();
+            } else {
+                script.src = '../assets/js/auth.js';
+            }
+            
+            script.onerror = function() {
+                console.error('❌ Error al cargar auth.js desde:', script.src);
+            };
+            
+            script.onload = function() {
+                console.log('✅ auth.js cargado correctamente desde:', script.src);
+                
+                // Limpiar sesión nuevamente después de cargar auth.js para asegurar que no haya sesión guardada
+                try {
+                    sessionStorage.removeItem('current_session');
+                    localStorage.removeItem('current_session');
+                    console.log('🧹 Sesión limpiada nuevamente después de cargar auth.js');
+                } catch (error) {
+                    console.error('❌ Error al limpiar sesión después de cargar auth.js:', error);
+                }
+                
+                if (window.authSystem) {
+                    console.log('✅ authSystem disponible');
+                    console.log('✅ Métodos disponibles:', Object.keys(window.authSystem));
+                    if (typeof window.authSystem.checkEmail === 'function') {
+                        console.log('✅ checkEmail está disponible');
+                    } else {
+                        console.error('❌ checkEmail NO está disponible');
+                    }
+                } else {
+                    console.error('❌ authSystem NO está disponible después de cargar');
+                }
+            };
+            
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <script>
+        // DETECCIÓN DE ENTORNO Y NAVEGACIÓN CON VERIFICACIÓN DE EMAIL
+        (function() {
+            'use strict';
+            
+            // Función para detectar si estamos en Hostinger
+            function isHostinger() {
+                var currentUrl = window.location.href.toLowerCase();
+                return currentUrl.indexOf('hostinger') !== -1 || 
+                       currentUrl.indexOf('hostingersite.com') !== -1 ||
+                       currentUrl.indexOf('organicjournal.com.mx') !== -1;
+            }
+            
+            // Función para obtener la ruta correcta de login
+            function getLoginPath() {
+                var currentPath = window.location.pathname;
+                var isInPages = currentPath.indexOf('/pages/') !== -1;
+                
+                if (isHostinger()) {
+                    return 'login.html';
+                } else {
+                    if (isInPages) {
+                        return 'login.html';
+                    } else {
+                        return 'pages/login.html';
+                    }
+                }
+            }
+            
+            // Función para obtener la ruta correcta de registro
+            function getRegistroPath() {
+                var currentPath = window.location.pathname;
+                var isInPages = currentPath.indexOf('/pages/') !== -1;
+                
+                if (isHostinger()) {
+                    return 'registro.html';
+                } else {
+                    if (isInPages) {
+                        return 'registro.html';
+                    } else {
+                        return 'pages/registro.html';
+                    }
+                }
+            }
+            
+            // Función para navegar al login con email prellenado
+            function navigateToLogin(email) {
+                try {
+                    console.log('🚀 Navegando al login con email:', email);
+                    sessionStorage.setItem('allowLoginAccess', 'true');
+                    if (email) {
+                        sessionStorage.setItem('prefillEmail', email);
+                    }
+                    var loginPath = getLoginPath();
+                    window.location.href = loginPath;
+                } catch (error) {
+                    console.error('❌ Error al navegar:', error);
+                    window.location.href = getLoginPath();
+                }
+            }
+            
+            // Función para navegar al registro con email prellenado
+            function navigateToRegistro(email) {
+                try {
+                    console.log('🚀 Navegando al registro con email:', email);
+                    if (email) {
+                        sessionStorage.setItem('prefillEmail', email);
+                    }
+                    var registroPath = getRegistroPath();
+                    window.location.href = registroPath;
+                } catch (error) {
+                    console.error('❌ Error al navegar:', error);
+                    window.location.href = getRegistroPath();
+                }
+            }
+            
+            // Función para mostrar el modal de verificación
+            function showEmailModal() {
+                var modal = document.getElementById('emailModal');
+                var emailInput = document.getElementById('emailInput');
+                var errorDiv = document.getElementById('emailModalError');
+                var loadingDiv = document.getElementById('emailModalLoading');
+                var emailVerificationView = document.getElementById('emailVerificationView');
+                var loginView = document.getElementById('loginView');
+                var loginErrorDiv = document.getElementById('loginModalError');
+                var loginLoadingDiv = document.getElementById('loginModalLoading');
+                var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                var loginPasswordInput = document.getElementById('loginPasswordInput');
+                
+                // Resetear el flag de permiso cuando se muestra el modal
+                if (window.resetPermisoGuardarSesion) {
+                    window.resetPermisoGuardarSesion();
+                }
+                
+                if (modal) {
+                    modal.classList.add('show');
+                    errorDiv.classList.remove('show');
+                    loadingDiv.classList.remove('show');
+                    emailInput.value = '';
+                    emailInput.focus();
+                    
+                    // Limpiar estado del login
+                    if (loginErrorDiv) {
+                        loginErrorDiv.textContent = '';
+                        loginErrorDiv.classList.remove('show');
+                    }
+                    if (loginLoadingDiv) loginLoadingDiv.classList.remove('show');
+                    if (loginSubmitBtn) {
+                        loginSubmitBtn.disabled = false;
+                        loginSubmitBtn.textContent = 'Iniciar Sesión';
+                    }
+                    if (loginPasswordInput) {
+                        loginPasswordInput.value = '';
+                    }
+                    
+                    // Mostrar vista de verificación y ocultar vista de login
+                    if (emailVerificationView) emailVerificationView.style.display = 'block';
+                    if (loginView) loginView.style.display = 'none';
+                }
+            }
+            
+            // Función para ocultar el modal
+            function hideEmailModal() {
+                var modal = document.getElementById('emailModal');
+                var errorDiv = document.getElementById('emailModalError');
+                var loadingDiv = document.getElementById('emailModalLoading');
+                var loginErrorDiv = document.getElementById('loginModalError');
+                var loginLoadingDiv = document.getElementById('loginModalLoading');
+                var emailVerificationView = document.getElementById('emailVerificationView');
+                var loginView = document.getElementById('loginView');
+                var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                var loginPasswordInput = document.getElementById('loginPasswordInput');
+                var emailInput = document.getElementById('emailInput');
+                
+                if (modal) {
+                    modal.classList.remove('show');
+                    errorDiv.classList.remove('show');
+                    loadingDiv.classList.remove('show');
+                    
+                    // Limpiar estado del login
+                    if (loginErrorDiv) {
+                        loginErrorDiv.textContent = '';
+                        loginErrorDiv.classList.remove('show');
+                    }
+                    if (loginLoadingDiv) loginLoadingDiv.classList.remove('show');
+                    if (loginSubmitBtn) {
+                        loginSubmitBtn.disabled = false;
+                        loginSubmitBtn.textContent = 'Iniciar Sesión';
+                    }
+                    if (loginPasswordInput) {
+                        loginPasswordInput.value = '';
+                    }
+                    if (emailInput) {
+                        emailInput.value = '';
+                    }
+                    
+                    // Resetear vistas
+                    if (emailVerificationView) emailVerificationView.style.display = 'block';
+                    if (loginView) loginView.style.display = 'none';
+                }
+            }
+            
+            // Función para mostrar la vista de login
+            function showLoginView(email) {
+                var emailVerificationView = document.getElementById('emailVerificationView');
+                var loginView = document.getElementById('loginView');
+                var loginEmailInput = document.getElementById('loginEmailInput');
+                var loginPasswordInput = document.getElementById('loginPasswordInput');
+                var loginErrorDiv = document.getElementById('loginModalError');
+                var loginLoadingDiv = document.getElementById('loginModalLoading');
+                var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                
+                // Resetear el flag de permiso cuando se muestra el modal de nuevo
+                // Esto asegura que cada intento de login tenga que activar el permiso nuevamente
+                if (window.resetPermisoGuardarSesion) {
+                    window.resetPermisoGuardarSesion();
+                }
+                
+                if (emailVerificationView) emailVerificationView.style.display = 'none';
+                if (loginView) loginView.style.display = 'block';
+                if (loginEmailInput) loginEmailInput.value = email;
+                if (loginPasswordInput) {
+                    loginPasswordInput.value = '';
+                    loginPasswordInput.focus();
+                }
+                // Limpiar errores y estado del botón
+                if (loginErrorDiv) {
+                    loginErrorDiv.textContent = '';
+                    loginErrorDiv.classList.remove('show');
+                }
+                if (loginLoadingDiv) loginLoadingDiv.classList.remove('show');
+                // Asegurar que el botón esté habilitado y con el texto correcto
+                if (loginSubmitBtn) {
+                    loginSubmitBtn.disabled = false;
+                    loginSubmitBtn.textContent = 'Iniciar Sesión';
+                }
+            }
+            
+            // Función para procesar el login desde el modal
+            async function processLoginFromModal() {
+                var loginEmailInput = document.getElementById('loginEmailInput');
+                var loginPasswordInput = document.getElementById('loginPasswordInput');
+                var loginErrorDiv = document.getElementById('loginModalError');
+                var loginLoadingDiv = document.getElementById('loginModalLoading');
+                var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                
+                var email = loginEmailInput ? loginEmailInput.value.trim() : '';
+                var password = loginPasswordInput ? loginPasswordInput.value : '';
+                
+                // Validar campos
+                if (!password) {
+                    if (loginErrorDiv) {
+                        loginErrorDiv.textContent = 'Por favor ingresa tu contraseña';
+                        loginErrorDiv.classList.add('show');
+                    }
+                    return;
+                }
+                
+                // Ocultar error y mostrar loading
+                if (loginErrorDiv) loginErrorDiv.classList.remove('show');
+                if (loginLoadingDiv) loginLoadingDiv.classList.add('show');
+                if (loginSubmitBtn) {
+                    loginSubmitBtn.disabled = true;
+                    loginSubmitBtn.textContent = 'Iniciando sesión...';
+                }
+                
+                try {
+                    // Esperar a que authSystem esté disponible
+                    if (!window.authSystem) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                    
+                    if (!window.authSystem) {
+                        throw new Error('Sistema de autenticación no disponible');
+                    }
+                    
+                    // IMPORTANTE: Activar permiso ANTES de llamar a login()
+                    // porque login() internamente llama a setSession() que es interceptado
+                    if (window.permitirGuardarSesionEnInicio) {
+                        window.permitirGuardarSesionEnInicio();
+                        console.log('✅ Permiso activado ANTES del login');
+                    }
+                    
+                    // Intentar iniciar sesión
+                    console.log('🔐 Intentando iniciar sesión con email:', email);
+                    var result = await window.authSystem.login(email, password);
+                    console.log('📋 Resultado del login:', result);
+                    
+                    if (loginLoadingDiv) loginLoadingDiv.classList.remove('show');
+                    if (loginSubmitBtn) {
+                        loginSubmitBtn.disabled = false;
+                        loginSubmitBtn.textContent = 'Iniciar Sesión';
+                    }
+                    
+                    if (result.success) {
+                        // Verificar que la sesión se haya guardado correctamente
+                        let user = window.authSystem.getCurrentUser();
+                        
+                        if (!user) {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            user = window.authSystem.getCurrentUser();
+                        }
+                        
+                        if (!user) {
+                            if (loginErrorDiv) {
+                                loginErrorDiv.textContent = 'Error al guardar la sesión. Intenta nuevamente.';
+                                loginErrorDiv.classList.add('show');
+                            }
+                            // Asegurar que el botón esté habilitado
+                            if (loginSubmitBtn) {
+                                loginSubmitBtn.disabled = false;
+                                loginSubmitBtn.textContent = 'Iniciar Sesión';
+                            }
+                            return;
+                        }
+                        
+                        console.log('✅ Login exitoso desde modal, usuario:', user);
+                        
+                        // La sesión ya debería estar guardada por login(), pero verificamos
+                        // No necesitamos llamar a setSession() de nuevo porque login() ya lo hizo
+                        
+                        // Esperar un momento adicional para asegurar que sessionStorage se sincronice
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                        // Verificar una vez más antes de redirigir
+                        const finalCheck = window.authSystem.getCurrentUser();
+                        if (!finalCheck) {
+                            if (loginErrorDiv) {
+                                loginErrorDiv.textContent = 'Error crítico. Por favor recarga la página e intenta nuevamente.';
+                                loginErrorDiv.classList.add('show');
+                            }
+                            // Asegurar que el botón esté habilitado
+                            if (loginSubmitBtn) {
+                                loginSubmitBtn.disabled = false;
+                                loginSubmitBtn.textContent = 'Iniciar Sesión';
+                            }
+                            return;
+                        }
+                        
+                        // Si es administrador, ofrecer ir al panel de admin o a la biblioteca
+                        if (user && user.rol === 'admin') {
+                            if (confirm('¿Deseas ir al Panel de Administración?')) {
+                                window.location.href = 'admin.html';
+                            } else {
+                                // Marcar que viene de login para permitir acceso a index.html
+                                sessionStorage.setItem('vieneDeLogin', 'true');
+                                window.location.href = 'index.html';
+                            }
+                        } else {
+                            // Marcar que viene de login para permitir acceso a index.html
+                            sessionStorage.setItem('vieneDeLogin', 'true');
+                            window.location.href = 'index.html';
+                        }
+                    } else {
+                        // Error en el login - asegurar que el botón esté habilitado y mostrar error
+                        console.log('❌ Error en login:', result.message);
+                        if (loginErrorDiv) {
+                            loginErrorDiv.textContent = result.message || 'Correo o contraseña incorrectos';
+                            loginErrorDiv.classList.add('show');
+                            console.log('✅ Mensaje de error mostrado en el modal');
+                        } else {
+                            console.error('❌ No se encontró el elemento loginModalError');
+                        }
+                        // Asegurar que el botón esté habilitado
+                        if (loginSubmitBtn) {
+                            loginSubmitBtn.disabled = false;
+                            loginSubmitBtn.textContent = 'Iniciar Sesión';
+                            console.log('✅ Botón de login habilitado');
+                        } else {
+                            console.error('❌ No se encontró el botón loginSubmitBtn');
+                        }
+                        // Asegurar que el campo de contraseña esté enfocado para facilitar reintento
+                        if (loginPasswordInput) {
+                            loginPasswordInput.focus();
+                            loginPasswordInput.select();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al iniciar sesión desde modal:', error);
+                    if (loginLoadingDiv) loginLoadingDiv.classList.remove('show');
+                    if (loginSubmitBtn) {
+                        loginSubmitBtn.disabled = false;
+                        loginSubmitBtn.textContent = 'Iniciar Sesión';
+                    }
+                    if (loginErrorDiv) {
+                        loginErrorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
+                        loginErrorDiv.classList.add('show');
+                    }
+                }
+            }
+            
+            // Función para verificar email y redirigir
+            async function verifyEmailAndNavigate() {
+                var emailInput = document.getElementById('emailInput');
+                var errorDiv = document.getElementById('emailModalError');
+                var loadingDiv = document.getElementById('emailModalLoading');
+                var verifyBtn = document.getElementById('verifyEmailBtn');
+                
+                var email = emailInput.value.trim();
+                
+                // Validar email
+                if (!email) {
+                    errorDiv.textContent = 'Por favor ingresa tu correo electrónico';
+                    errorDiv.classList.add('show');
+                    return;
+                }
+                
+                var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    errorDiv.textContent = 'Por favor ingresa un correo electrónico válido';
+                    errorDiv.classList.add('show');
+                    return;
+                }
+                
+                // Ocultar error y mostrar loading
+                errorDiv.classList.remove('show');
+                loadingDiv.classList.add('show');
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Verificando...';
+                
+                try {
+                    // Esperar a que authSystem esté disponible
+                    if (!window.authSystem) {
+                        // Esperar un poco más
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                    
+                    // Verificar múltiples veces que authSystem y checkEmail estén disponibles
+                    let attempts = 0;
+                    while ((!window.authSystem || typeof window.authSystem.checkEmail !== 'function') && attempts < 5) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        attempts++;
+                    }
+                    
+                    if (!window.authSystem) {
+                        throw new Error('Sistema de autenticación no disponible');
+                    }
+                    
+                    if (typeof window.authSystem.checkEmail !== 'function') {
+                        console.error('❌ checkEmail no está disponible en authSystem');
+                        console.error('authSystem disponible:', window.authSystem);
+                        console.error('Métodos disponibles:', Object.keys(window.authSystem || {}));
+                        throw new Error('La función checkEmail no está disponible. Verifica que auth.js se haya cargado correctamente.');
+                    }
+                    
+                    // Verificar si el email existe
+                    console.log('🔍 Llamando a checkEmail con email:', email);
+                    var result = await window.authSystem.checkEmail(email);
+                    console.log('📦 Resultado de checkEmail:', result);
+                    
+                    loadingDiv.classList.remove('show');
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Continuar';
+                    
+                    if (result.success) {
+                        if (result.exists) {
+                            // Email existe, mostrar formulario de login en el modal
+                            console.log('✅ Email existe, mostrando formulario de login');
+                            showLoginView(email);
+                        } else {
+                            // Email no existe, ir a registro
+                            console.log('ℹ️ Email no existe, redirigiendo a registro');
+                            navigateToRegistro(email);
+                        }
+                    } else {
+                        // Error al verificar
+                        errorDiv.textContent = result.message || 'Error al verificar el correo. Intenta nuevamente.';
+                        errorDiv.classList.add('show');
+                    }
+                } catch (error) {
+                    console.error('Error al verificar email:', error);
+                    loadingDiv.classList.remove('show');
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Continuar';
+                    errorDiv.textContent = 'Error de conexión. Verifica que el servidor esté corriendo.';
+                    errorDiv.classList.add('show');
+                }
+            }
+            
+            // Configurar el botón y el modal cuando el DOM esté listo
+            function setupButtonAndModal() {
+                var btn = document.getElementById('loginButton');
+                var modal = document.getElementById('emailModal');
+                var verifyBtn = document.getElementById('verifyEmailBtn');
+                var cancelBtn = document.getElementById('cancelEmailBtn');
+                var emailInput = document.getElementById('emailInput');
+                
+                if (!btn) {
+                    console.error('❌ Botón no encontrado, reintentando...');
+                    setTimeout(setupButtonAndModal, 100);
+                    return;
+                }
+                
+                console.log('✅ Botón encontrado');
+                
+                // Configurar click del botón de inicio de sesión
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('🖱️ Click detectado en botón - mostrando modal');
+                    showEmailModal();
+                    return false;
+                }, true);
+                
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('🖱️ onclick directo ejecutado - mostrando modal');
+                    showEmailModal();
+                    return false;
+                };
+                
+                // Configurar botón de verificar email
+                if (verifyBtn) {
+                    verifyBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        verifyEmailAndNavigate();
+                    });
+                }
+                
+                // Configurar botón de cancelar
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        hideEmailModal();
+                    });
+                }
+                
+                // Permitir Enter en el input de email
+                if (emailInput) {
+                    emailInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            verifyEmailAndNavigate();
+                        }
+                    });
+                }
+                
+                // Configurar botón de login
+                var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                if (loginSubmitBtn) {
+                    loginSubmitBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        processLoginFromModal();
+                    });
+                }
+                
+                // Configurar botón de volver
+                var backToEmailBtn = document.getElementById('backToEmailBtn');
+                if (backToEmailBtn) {
+                    backToEmailBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showEmailModal();
+                    });
+                }
+                
+                // Permitir Enter en el input de contraseña
+                var loginPasswordInput = document.getElementById('loginPasswordInput');
+                if (loginPasswordInput) {
+                    loginPasswordInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            processLoginFromModal();
+                        }
+                    });
+                }
+                
+                // Cerrar modal al hacer click fuera de él
+                if (modal) {
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            hideEmailModal();
+                        }
+                    });
+                }
+                
+                console.log('✅ Botón y modal configurados correctamente');
+            }
+            
+            // Ejecutar cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupButtonAndModal);
+            } else {
+                setupButtonAndModal();
+            }
+            
+            // También ejecutar después de un pequeño delay por si acaso
+            setTimeout(setupButtonAndModal, 50);
+        })();
+
+        // Función para alternar visibilidad de contraseña
+        function togglePassword(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (input) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                    button.setAttribute('aria-label', 'Ocultar contraseña');
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                    button.setAttribute('aria-label', 'Mostrar contraseña');
+                }
+            }
+        }
+
+        // Prevenir navegación con las flechas del navegador (back/forward) - BLOQUEO COMPLETO
+        (function() {
+            var bloqueado = false;
+            var urlInicio = window.location.href;
+            
+            // Función para bloquear navegación
+            function bloquearNavegacion() {
+                if (bloqueado) return;
+                
+                // Reemplazar la entrada actual del historial
+                history.replaceState({page: 'inicio'}, null, urlInicio);
+                
+                // Agregar múltiples entradas al historial para bloquear ambas direcciones
+                history.pushState({page: 'inicio'}, null, urlInicio);
+                history.pushState({page: 'inicio'}, null, urlInicio);
+                history.pushState({page: 'inicio'}, null, urlInicio);
+            }
+            
+            // Bloquear inmediatamente al cargar
+            bloquearNavegacion();
+            bloqueado = true;
+            
+            // Bloquear cuando el documento esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    bloquearNavegacion();
+                    bloqueado = true;
+                });
+            } else {
+                bloquearNavegacion();
+                bloqueado = true;
+            }
+            
+            // Bloquear después de delays para asegurar que se ejecute
+            setTimeout(function() {
+                bloquearNavegacion();
+                bloqueado = true;
+            }, 50);
+            setTimeout(function() {
+                bloquearNavegacion();
+                bloqueado = true;
+            }, 100);
+            setTimeout(function() {
+                bloquearNavegacion();
+                bloqueado = true;
+            }, 500);
+            
+            // Prevenir navegación cuando el usuario intenta usar las flechas del navegador
+            window.addEventListener('popstate', function(event) {
+                // Volver a agregar entradas al historial inmediatamente ANTES de cualquier otra acción
+                history.pushState({page: 'inicio'}, null, urlInicio);
+                history.pushState({page: 'inicio'}, null, urlInicio);
+                history.pushState({page: 'inicio'}, null, urlInicio);
+                
+                // Forzar que la página permanezca en inicio.html
+                if (window.location.pathname.indexOf('inicio.html') === -1) {
+                    window.location.replace(urlInicio);
+                }
+                
+                // Prevenir cualquier acción adicional
+                event.stopImmediatePropagation();
+                
+                return false;
+            }, true); // Usar capture phase para interceptar ANTES que otros listeners
+            
+            // Interceptar cualquier cambio en la URL como respaldo adicional
+            var lastUrl = window.location.href;
+            setInterval(function() {
+                var currentUrl = window.location.href;
+                if (currentUrl !== lastUrl && currentUrl !== urlInicio && window.location.pathname.indexOf('inicio.html') === -1) {
+                    window.location.replace(urlInicio);
+                }
+                lastUrl = window.location.href;
+            }, 50);
+            
+            // Bloquear también el evento hashchange
+            window.addEventListener('hashchange', function(event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                window.location.replace(urlInicio);
+                return false;
+            }, true);
+        })();
+
+        // Limpiar sesión periódicamente mientras estamos en inicio.html
+        // Esto asegura que incluso si auth.js intenta guardar una sesión, se limpie
+        (function() {
+            function limpiarSesionEnInicio() {
+                try {
+                    sessionStorage.removeItem('current_session');
+                    localStorage.removeItem('current_session');
+                    console.log('🧹 Sesión limpiada en inicio.html');
+                } catch (error) {
+                    console.error('❌ Error al limpiar sesión:', error);
+                }
+            }
+            
+            // Limpiar inmediatamente
+            limpiarSesionEnInicio();
+            
+            // Limpiar cuando el documento esté completamente cargado
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', limpiarSesionEnInicio);
+            } else {
+                limpiarSesionEnInicio();
+            }
+            
+            // Limpiar después de múltiples delays para asegurar que se ejecute después de auth.js
+            setTimeout(limpiarSesionEnInicio, 100);
+            setTimeout(limpiarSesionEnInicio, 500);
+            setTimeout(limpiarSesionEnInicio, 1000);
+            setTimeout(limpiarSesionEnInicio, 2000);
+            setTimeout(limpiarSesionEnInicio, 3000);
+            
+            // Limpiar cuando la ventana recibe foco (por si el usuario vuelve a la pestaña)
+            window.addEventListener('focus', limpiarSesionEnInicio);
+            
+            // Interceptar cualquier intento de guardar sesión mientras estamos en inicio.html
+            // PERO permitir guardar cuando el usuario inicia sesión exitosamente desde el modal
+            var originalSetSession = null;
+            var permitirGuardarSesion = false; // Flag para permitir guardar sesión cuando el usuario inicia sesión
+            
+            var checkInterval = setInterval(function() {
+                if (window.authSystem && window.authSystem.setSession) {
+                    if (!originalSetSession) {
+                        originalSetSession = window.authSystem.setSession;
+                        window.authSystem.setSession = function(user) {
+                            // Solo permitir guardar sesión si el flag está activado (usuario inició sesión)
+                            if (permitirGuardarSesion) {
+                                console.log('✅ Guardando sesión después de login exitoso');
+                                return originalSetSession.call(this, user);
+                            } else {
+                                console.log('⚠️ Intento de guardar sesión en inicio.html bloqueado');
+                                // No guardar la sesión mientras estamos en inicio.html
+                                return;
+                            }
+                        };
+                        console.log('🔒 Interceptor de setSession activado en inicio.html');
+                    }
+                }
+            }, 100);
+            
+            // Permitir guardar sesión cuando el usuario inicia sesión desde el modal
+            // Esto se activará en processLoginFromModal ANTES de llamar a login()
+            window.permitirGuardarSesionEnInicio = function() {
+                permitirGuardarSesion = true;
+                console.log('✅ Permiso para guardar sesión activado');
+            };
+            
+            // Función para resetear el permiso (se llama cuando se muestra el modal de nuevo)
+            window.resetPermisoGuardarSesion = function() {
+                permitirGuardarSesion = false;
+                console.log('🔄 Permiso para guardar sesión reseteado');
+            };
+            
+            // Limpiar el intervalo después de 10 segundos
+            setTimeout(function() {
+                clearInterval(checkInterval);
+            }, 10000);
+        })();
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script src="../assets/js/pwa-register.js"></script>
+
+</body>
+
+</html>

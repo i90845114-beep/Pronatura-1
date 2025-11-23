@@ -1,0 +1,31 @@
+{
+  "name": "pronatura",
+  "version": "1.0.0",
+  "description": "Sistema de registro ambiental y control social para la conservación de la biodiversidad",
+  "main": "index.html",
+  "scripts": {
+    "ionic:copy": "powershell -ExecutionPolicy Bypass -File docs/ionic/scripts/copy-files.ps1",
+    "ionic:sync-only": "npx cap sync android",
+    "ionic:sync": "powershell -ExecutionPolicy Bypass -File docs/ionic/scripts/sync.ps1",
+    "ionic:open": "powershell -ExecutionPolicy Bypass -File docs/ionic/scripts/open-android.ps1",
+    "ionic:build": "cd android && ./gradlew assembleDebug",
+    "ionic:build:release": "cd android && ./gradlew assembleRelease",
+    "ionic:setup": "npm install && npm run ionic:copy && npm run ionic:sync-only",
+    "sync": "npx cap sync",
+    "sync:android": "npx cap sync android",
+    "open:android": "npx cap open android",
+    "copy:www": "powershell -Command \"Copy-Item -Path pages,assets,api,manifest.json,sw.js,index.html,index.php -Destination www -Recurse -Force\""
+  },
+  "keywords": [
+    "pwa",
+    "ionic",
+    "capacitor"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4"
+  }
+}

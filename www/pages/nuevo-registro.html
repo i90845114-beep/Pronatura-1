@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Registro - Contraloría Social Tamaulipas</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4D8143">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProNatura">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
+    
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="anonymous"
+    />
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""
+    ></script>
+</head>
+<body>
+    <!-- Form Container -->
+    <div class="form-container">
+        <div class="form-header">
+            <h2 id="formTitle">Nuevo Registro</h2>
+            <button class="close-btn" id="closeBtn">✕</button>
+        </div>
+
+        <form id="newRecordForm" class="record-form">
+            <!-- Categoría y Subcategoría -->
+            <div class="form-group">
+                <label for="categoria">Categoría *</label>
+                <select id="categoria" name="categoria" required>
+                    <option value="">Selecciona una categoría</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="subcategoria">Subcategoría</label>
+                <select id="subcategoria" name="subcategoria">
+                    <option value="">Selecciona primero una categoría</option>
+                </select>
+            </div>
+
+            <!-- Fecha y Hora -->
+            <div class="form-group" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                <div>
+                    <label for="fecha">Fecha *</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+                <div>
+                    <label for="hora">Hora</label>
+                    <input type="time" id="hora" name="hora">
+                </div>
+            </div>
+
+            <!-- Responsable y Brigada -->
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label for="responsable">Responsable</label>
+                    <input type="text" id="responsable" name="responsable" placeholder="Nombre del responsable">
+                </div>
+                <div>
+                    <label for="brigada">Brigada</label>
+                    <input type="text" id="brigada" name="brigada" placeholder="Nombre de la brigada">
+                </div>
+            </div>
+
+            <!-- Comunidad y Sitio -->
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label for="comunidad">Comunidad</label>
+                    <input type="text" id="comunidad" name="comunidad" placeholder="Nombre de la comunidad">
+                </div>
+                <div>
+                    <label for="sitio">Sitio</label>
+                    <input type="text" id="sitio" name="sitio" placeholder="Nombre del sitio">
+                </div>
+            </div>
+
+            <!-- Tipo de Actividad -->
+            <div class="form-group">
+                <label for="tipo_actividad">Tipo de Actividad</label>
+                <input type="text" id="tipo_actividad" name="tipo_actividad" placeholder="Ej: Patrullaje rutinario, Limpieza comunitaria">
+            </div>
+
+            <!-- Descripción Breve -->
+            <div class="form-group">
+                <label for="descripcion_breve">Descripción Breve</label>
+                <textarea id="descripcion_breve" name="descripcion_breve" rows="2" placeholder="Descripción corta de la actividad"></textarea>
+            </div>
+
+            <!-- Campos originales (opcionales para compatibilidad) -->
+            <details style="margin: 1rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 5px;">
+                <summary style="cursor: pointer; font-weight: 600;">Campos Adicionales (Opcional)</summary>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="nombre">Nombre (para registros de fauna)</label>
+                    <input type="text" id="nombre" name="nombre" placeholder="Nombre del animal o especie">
+                </div>
+                <div class="form-group">
+                    <label for="especie">Especie</label>
+                    <input type="text" id="especie" name="especie" placeholder="Especie identificada">
+                </div>
+            </details>
+
+            <!-- Ubicación -->
+            <div class="form-group">
+                <label>Ubicación (GPS) *</label>
+                <div class="location-inputs">
+                    <div class="location-field">
+                        <label for="latitud">Latitud *</label>
+                        <input type="number" id="latitud" name="latitud" step="any" placeholder="Ej: 19.4326" required>
+                    </div>
+                    <div class="location-field">
+                        <label for="longitud">Longitud *</label>
+                        <input type="number" id="longitud" name="longitud" step="any" placeholder="Ej: -99.1332" required>
+                    </div>
+                </div>
+                <button type="button" class="btn-map" id="selectLocationBtn">
+                    <span>📍</span>
+                    Seleccionar ubicación en el mapa
+                </button>
+            </div>
+
+            <!-- Evidencia (Fotos, Videos, Audio) -->
+            <div class="form-group">
+                <label>Evidencia (Fotos, Videos, Audio)</label>
+                <button type="button" class="btn-upload" id="uploadBtn">
+                    <span>📤</span>
+                    Añadir evidencia
+                </button>
+                <input type="file" id="mediaInput" name="media" accept="image/*,video/*,audio/*" multiple style="display: none;">
+                <div id="mediaPreview" class="media-preview"></div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-group">
+                <label for="observaciones">Observaciones</label>
+                <textarea id="observaciones" name="observaciones" rows="4" placeholder="Observaciones adicionales sobre la actividad..."></textarea>
+            </div>
+
+            <!-- Materiales Utilizados y Número de Participantes -->
+            <div class="form-group" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                <div>
+                    <label for="materiales_utilizados">Materiales Utilizados</label>
+                    <textarea id="materiales_utilizados" name="materiales_utilizados" rows="2" placeholder="Lista de materiales utilizados"></textarea>
+                </div>
+                <div>
+                    <label for="numero_participantes">Número de Participantes</label>
+                    <input type="number" id="numero_participantes" name="numero_participantes" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <!-- Notas (legacy, para compatibilidad) -->
+            <div class="form-group">
+                <label for="notas">Notas Adicionales</label>
+                <textarea id="notas" name="notas" rows="3" placeholder="Notas adicionales (opcional)"></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" id="cancelBtn">Cancelar</button>
+                <button type="submit" class="btn-save">Guardar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal de Selección de Ubicación -->
+    <div id="locationModal" class="modal">
+        <div class="modal-content location-modal">
+            <div class="modal-header">
+                <h3>Selecciona una ubicación</h3>
+                <button class="close-btn" id="closeLocationModal">✕</button>
+            </div>
+            <p class="modal-instructions">
+                Haz clic en el mapa para seleccionar una ubicación o ingresa las coordenadas manualmente:
+            </p>
+            <div class="map-container" style="position: relative;">
+                <div id="locationMap" style="width: 100%; height: 400px; border-radius: 8px; z-index: 1;"></div>
+                <div class="map-coordinates-display" id="mapCoordinates" style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.95); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.85rem; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-weight: 600; color: #2c7a7b;">23.7, -99.0</div>
+            </div>
+            <div class="coordinate-inputs">
+                <div class="coordinate-field">
+                    <label for="modalLatitud">Latitud</label>
+                    <input type="number" id="modalLatitud" step="any" value="23.7">
+                </div>
+                <div class="coordinate-field">
+                    <label for="modalLongitud">Longitud</label>
+                    <input type="number" id="modalLongitud" step="any" value="-99.0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-confirm" id="confirmLocationBtn">Confirmar ubicación</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/admin-auth.js"></script>
+    <script>
+        // Verificar autenticación antes de permitir registrar
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
+            
+            if (!currentUser) {
+                // Mostrar modal preguntando si tiene cuenta
+                const hasAccount = confirm('¿Ya tienes una cuenta registrada?\n\n- Clic en "Aceptar" si ya tienes cuenta (irás a iniciar sesión)\n- Clic en "Cancelar" si no tienes cuenta (irás a registrarte)');
+                
+                if (hasAccount) {
+                    // Tiene cuenta, ir a inicio.html para iniciar sesión
+                    window.location.href = 'inicio.html';
+                } else {
+                    // No tiene cuenta, ir a registro
+                    window.location.href = 'registro.html';
+                }
+            }
+        });
+    </script>
+    <script src="../assets/js/form-script.js?v=4"></script>
+    <!-- PWA Service Worker Registration -->
+    <script src="../assets/js/pwa-register.js"></script>
+</body>
+</html>
+

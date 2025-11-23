@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registro de Animales - Contraloría Social Tamaulipas</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4D8143">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProNatura">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
+    <link rel="icon" type="image/png" href="../assets/icons/icon-96x96.png">
+    <link rel="shortcut icon" type="image/png" href="../assets/icons/icon-96x96.png">
+
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <script>
+        // ESTABLECER FLAG DE ACCESO PERMITIDO INMEDIATAMENTE si viene de navegación interna
+        // Esto debe ejecutarse ANTES de que auth.js se cargue para evitar redirecciones
+        (function() {
+            // ESTABLECER FLAG PERMANENTE INMEDIATAMENTE - esto previene cualquier redirección
+            // Solo NO establecer si vienes explícitamente de inicio/login/registro SIN sesión
+            const referrer = document.referrer || '';
+            const vieneDeCancelacion = sessionStorage.getItem('vieneDeCancelacion') === 'true';
+            const vieneDeLogin = sessionStorage.getItem('vieneDeLogin') === 'true';
+            const navegandoInternamente = sessionStorage.getItem('navegando_internamente') === 'true';
+            const tieneSesion = sessionStorage.getItem('current_session') !== null;
+            
+            // PRIORIDAD 1: Si el flag de navegación interna está activo (establecido antes de navegar)
+            if (navegandoInternamente) {
+                sessionStorage.setItem('index_acceso_permitido', 'true');
+                sessionStorage.removeItem('navegando_internamente'); // Limpiar flag
+                console.log('✅ [index.html HEAD] Flag de navegación interna detectado - ACCESO PERMITIDO');
+                return; // Salir inmediatamente
+            }
+            
+            // PRIORIDAD 2: Si viene de navegación interna detectada por referrer
+            const esNavegacionInterna = referrer && referrer.length > 0 && (
+                referrer.includes('mapa-consolidado.html') ||
+                referrer.includes('bloc-notas.html') ||
+                referrer.includes('nuevo-registro.html') ||
+                referrer.includes('catalogo.html') ||
+                referrer.includes('admin.html') ||
+                (referrer.includes('index.html') && !referrer.includes('inicio.html')) ||
+                // Detección más flexible: si viene del mismo dominio y NO es inicio/login/registro
+                (referrer.includes(window.location.hostname) && 
+                 !referrer.includes('inicio.html') && 
+                 !referrer.includes('login.html') &&
+                 !referrer.includes('registro.html')) ||
+                // Detección por pathname si está disponible
+                (referrer.includes('/pages/') && 
+                 !referrer.includes('inicio.html') && 
+                 !referrer.includes('login.html') &&
+                 !referrer.includes('registro.html'))
+            );
+            
+            // REGLA GENERAL: Si hay sesión activa, PERMITIR SIEMPRE
+            if (tieneSesion) {
+                sessionStorage.setItem('index_acceso_permitido', 'true');
+                console.log('✅ [index.html HEAD] Sesión activa detectada - ACCESO PERMITIDO');
+                return;
+            }
+            
+            // Si viene de navegación interna O tiene flags activos, PERMITIR
+            if (esNavegacionInterna || vieneDeCancelacion || vieneDeLogin) {
+                sessionStorage.setItem('index_acceso_permitido', 'true');
+                console.log('✅ [index.html HEAD] Flag de acceso permitido establecido INMEDIATAMENTE');
+                console.log('🔍 [index.html HEAD] Referrer:', referrer);
+                console.log('🔍 [index.html HEAD] Viene de cancelación:', vieneDeCancelacion);
+                console.log('🔍 [index.html HEAD] Viene de login:', vieneDeLogin);
+                console.log('🔍 [index.html HEAD] Es navegación interna:', esNavegacionInterna);
+                return;
+            }
+            
+            // Si NO hay referrer (puede ser recarga o navegación directa), PERMITIR por seguridad
+            if (!referrer || referrer.length === 0) {
+                sessionStorage.setItem('index_acceso_permitido', 'true');
+                console.log('✅ [index.html HEAD] Referrer vacío - PERMITIENDO ACCESO por seguridad');
+                return;
+            }
+            
+            // SOLO NO establecer flag si vienes EXPLÍCITAMENTE de inicio/login/registro SIN sesión
+            const vieneDeInicioLoginRegistro = referrer.includes('inicio.html') || 
+                                               referrer.includes('login.html') ||
+                                               referrer.includes('registro.html');
+            
+            if (vieneDeInicioLoginRegistro && !tieneSesion) {
+                console.log('⚠️ [index.html HEAD] Viene de inicio/login/registro SIN sesión - NO establecer flag');
+                // NO establecer flag - dejar que auth.js maneje la redirección
+            } else {
+                // En cualquier otro caso, establecer flag por seguridad
+                sessionStorage.setItem('index_acceso_permitido', 'true');
+                console.log('✅ [index.html HEAD] Flag establecido por seguridad');
+            }
+        })();
+    </script>
+    <style>
+        /* Estilos responsivos específicos para index.html */
+        @media (max-width: 768px) {
+            .filter-container {
+                padding: 1rem !important;
+            }
+
+            .filter-container > div {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 1rem !important;
+            }
+
+            .filter-container label {
+                width: 100% !important;
+                text-align: left !important;
+            }
+
+            .filter-select {
+                width: 100% !important;
+                min-width: auto !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Header -->
+
+    <header class="header">
+
+        <h1>Registro de Animales</h1>
+
+        <nav class="nav-bar">
+
+            <a href="index.html" class="nav-item active">
+
+                <span class="nav-icon">📚</span>
+
+                Biblioteca
+
+            </a>
+
+            <a href="mapa-consolidado.html" class="nav-item">
+
+                <span class="nav-icon">🗺</span>
+
+                Mapa Consolidado
+
+            </a>
+
+            <a href="bloc-notas.html" class="nav-item">
+
+                <span class="nav-icon">📝</span>
+
+                Bloc de Notas
+
+            </a>
+
+            <a href="admin.html" class="nav-item admin-nav-item" id="adminNavItem" style="display: none;">
+
+                <span class="nav-icon">⚙</span>
+
+                Administración
+
+            </a>
+
+        </nav>
+
+        <div class="user-info">
+
+            <span id="userName" class="user-name"></span>
+
+            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Search and Action Bar -->
+
+    <div class="search-bar-container">
+
+        <div class="search-wrapper">
+
+            <span class="search-icon">🔍</span>
+
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar registros...">
+
+        </div>
+
+        <div class="action-buttons">
+
+            <button class="btn-filter" id="sortBtn">
+
+                <span>🔄</span>
+
+                Recientes primero
+
+            </button>
+
+            <button class="btn-primary" id="newRecordBtn">
+
+                <span>+</span>
+
+                Nuevo Registro
+
+            </button>
+
+        </div>
+
+    </div>
+
+    
+
+    <!-- Filtros de Categoría y Subcategoría -->
+
+    <div class="filter-container" style="padding: 1rem 2rem; background: white; border-bottom: 1px solid #e0e0e0;">
+
+        <div style="display: flex; gap: 1rem; align-items: center; max-width: 1200px; margin: 0 auto;">
+
+            <label style="font-weight: 600; color: #4D8143;">Filtrar por:</label>
+
+            <select id="filterCategoria" class="filter-select" style="padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 5px; font-size: 0.9rem; min-width: 250px;">
+
+                <option value="">Todas las categorias</option>
+
+            </select>
+
+            <select id="filterSubcategoria" class="filter-select" style="padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 5px; font-size: 0.9rem; min-width: 250px;" disabled>
+
+                <option value="">Todas las subcategorias</option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Main Content -->
+
+    <main class="main-content">
+
+        <div class="records-grid" id="recordsGrid">
+
+            <!-- Los registros se cargarán dinámicamente aquí -->
+
+        </div>
+
+    </main>
+
+
+
+    <!-- Modal para confirmar eliminación -->
+
+    <div id="deleteModal" class="modal">
+
+        <div class="modal-content">
+
+            <h3>¿Eliminar registro?</h3>
+
+            <p>Esta acción no se puede deshacer.</p>
+
+            <div class="modal-actions">
+
+                <button class="btn-cancel" id="cancelDeleteBtn">Cancelar</button>
+
+                <button class="btn-delete" id="confirmDeleteBtn">Eliminar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script src="../assets/js/auth.js"></script>
+
+    <script src="../assets/js/script.js"></script>
+
+    <script>
+
+        // ELIMINADA la verificación de autenticación aquí
+        // auth.js manejará la verificación correctamente
+        // Solo limpiar el flag de vieneDeLogin si existe
+        document.addEventListener('DOMContentLoaded', () => {
+            const vieneDeLogin = sessionStorage.getItem('vieneDeLogin') === 'true';
+            if (vieneDeLogin) {
+                sessionStorage.removeItem('vieneDeLogin');
+                console.log('✅ Flag vieneDeLogin limpiado');
+            }
+            
+            // INTERCEPTAR CLICS EN ENLACES DE NAVEGACIÓN para establecer flag antes de navegar
+            const navLinks = document.querySelectorAll('.nav-bar a[href]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    const href = this.getAttribute('href');
+                    // Si NO es index.html (Biblioteca), establecer flag de navegación interna
+                    if (href && href !== 'index.html' && !href.includes('inicio.html') && !href.includes('login.html') && !href.includes('registro.html')) {
+                        console.log('🔗 [index.html] Navegando a:', href);
+                        console.log('✅ [index.html] Estableciendo flag de navegación interna');
+                        // Establecer flag que indica que el usuario está navegando internamente
+                        sessionStorage.setItem('navegando_internamente', 'true');
+                        sessionStorage.setItem('pagina_destino', href);
+                        // Cuando regrese a index.html, este flag permitirá el acceso
+                        sessionStorage.setItem('index_acceso_permitido', 'true');
+                    }
+                });
+            });
+            
+            console.log('✅ Interceptores de navegación configurados');
+        });
+
+        // Mostrar información del usuario
+
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            const user = window.authSystem.getCurrentUser();
+
+            if (user) {
+
+                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
+
+                
+
+                // Verificar rol desde la API si no está en la sesión
+
+                let userRol = user.rol;
+
+                if (!userRol) {
+
+                    try {
+
+                        const response = await fetch(`../api/api.php?action=get_user_info&user_id=${user.id}`);
+
+                        const data = await response.json();
+
+                        if (data.success && data.user && data.user.rol) {
+
+                            userRol = data.user.rol;
+
+                            // Actualizar la sesión con el rol
+
+                            const updatedUser = { ...user, rol: userRol };
+
+                            window.authSystem.setSession(updatedUser);
+
+                        }
+
+                    } catch (error) {
+
+                        console.error('Error al obtener rol del usuario:', error);
+
+                    }
+
+                }
+
+                
+
+                // Mostrar botón de administración si es admin
+
+                if (userRol === 'admin') {
+
+                    const adminNavItem = document.getElementById('adminNavItem');
+
+                    if (adminNavItem) {
+
+                        adminNavItem.style.display = 'flex';
+
+                        console.log('Botón de administración mostrado');
+
+                    }
+
+                } else {
+
+                    console.log('Usuario no es admin. Rol:', userRol);
+
+                }
+
+            }
+
+            
+
+            // Botón cerrar sesión
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+
+                if (confirm('¿Deseas cerrar sesión?')) {
+
+                    window.authSystem.logout();
+
+                    window.location.href = 'inicio.html';
+
+                }
+
+            });
+
+        });
+
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script src="../assets/js/pwa-register.js"></script>
+
+</body>
+
+</html>

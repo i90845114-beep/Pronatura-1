@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Contraloría Social Tamaulipas</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <style>
+        /* Estilos para ver/ocultar contraseña */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #666;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s;
+        }
+
+        .password-toggle:hover {
+            color: #2c7a7b;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">Panel de Administración</h1>
+            <div class="header-actions">
+                <span class="user-name" id="userName">Cargando...</span>
+                <button class="btn-header btn-back" onclick="window.location.href='index.html'" title="Volver a la biblioteca de registros">
+                    <span class="btn-icon">📚</span>
+                    <span>Biblioteca</span>
+                </button>
+                <button class="btn-header btn-logout-admin" onclick="adminLogout()" title="Cerrar sesión de administrador">
+                    <span class="btn-icon">🚪</span>
+                    <span>Salir</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="admin-nav">
+        <button class="nav-tab active" data-tab="dashboard">
+            <span class="nav-icon">📊</span>
+            Dashboard
+        </button>
+        <button class="nav-tab" data-tab="usuarios">
+            <span class="nav-icon">👥</span>
+            Usuarios
+        </button>
+        <button class="nav-tab" data-tab="registros">
+            <span class="nav-icon">📚</span>
+            Todos los Registros
+        </button>
+        <button class="nav-tab" data-tab="categorias">
+            <span class="nav-icon">📁</span>
+            Categorías
+        </button>
+        <button class="nav-tab" data-tab="comentarios">
+            <span class="nav-icon">💬</span>
+            Comentarios
+        </button>
+        <button class="nav-tab" data-tab="ia-autonoma">
+            <span class="nav-icon">🤖</span>
+            IA Autónoma
+        </button>
+        <button class="nav-tab" data-tab="intentos-ofensivos">
+            <span class="nav-icon">🚫</span>
+            Intentos Ofensivos
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <!-- Dashboard Tab -->
+        <section id="dashboard" class="admin-section active">
+            <h2>📊 Dashboard</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="statUsuarios">-</div>
+                        <div class="stat-label">Usuarios Totales</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="statRegistros">-</div>
+                        <div class="stat-label">Registros Totales</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📁</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="statCategorias">-</div>
+                        <div class="stat-label">Categorías</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💬</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="statComentarios">-</div>
+                        <div class="stat-label">Comentarios</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin: 2rem 0; text-align: right; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <button id="btnPreviewCharts" class="btn-secondary" style="padding: 0.9rem 2rem; font-size: 1rem; border-radius: 8px; background: linear-gradient(135deg, #805ad5 0%, #9f7aea 100%); color: white; border: none; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(128, 90, 213, 0.3); transition: all 0.3s ease;">
+                    📊 Ver Gráficas con Datos de Ejemplo
+                </button>
+            </div>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Registros por Categoría</h3>
+                    <div id="chartCategorias" class="chart-placeholder">Cargando gráfico...</div>
+                </div>
+                <div class="chart-card">
+                    <h3>Registros por Mes</h3>
+                    <div id="chartMeses" class="chart-placeholder">Cargando gráfico...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usuarios Tab -->
+        <section id="usuarios" class="admin-section">
+            <div class="section-header">
+                <h2>Gestión de Usuarios</h2>
+                <button class="btn-primary" onclick="showAddUserModal()">+ Nuevo Usuario</button>
+            </div>
+            <div class="filters-bar">
+                <input type="text" id="searchUsers" placeholder="Buscar usuarios..." class="search-input">
+                <select id="filterRol" class="filter-select">
+                    <option value="">Todos los roles</option>
+                    <option value="usuario">Usuario</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <select id="filterActivo" class="filter-select">
+                    <option value="">Todos</option>
+                    <option value="1">Activos</option>
+                    <option value="0">Inactivos</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Sanciones</th>
+                            <th>Registro</th>
+                            <th>Último Acceso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuariosTableBody">
+                        <tr>
+                            <td colspan="9" class="loading">Cargando usuarios...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Registros Tab -->
+        <section id="registros" class="admin-section">
+            <div class="section-header">
+                <h2>Todos los Registros</h2>
+            </div>
+            <div class="filters-bar">
+                <input type="text" id="searchRegistros" placeholder="Buscar registros..." class="search-input">
+                <select id="filterCategoriaAdmin" class="filter-select">
+                    <option value="">Todas las categorías</option>
+                </select>
+                <select id="filterUsuarioAdmin" class="filter-select">
+                    <option value="">Todos los usuarios</option>
+                </select>
+            </div>
+            <div id="registrosGrid" class="records-grid">
+                <div class="loading-state">Cargando registros...</div>
+            </div>
+        </section>
+
+        <!-- Categorías Tab -->
+        <section id="categorias" class="admin-section">
+            <div class="section-header">
+                <h2>Gestión de Categorías y Subcategorías</h2>
+                <button class="btn-primary" onclick="showAddCategoriaModal()">+ Nueva Categoría</button>
+            </div>
+            <div id="categoriasContainer" class="categorias-container">
+                <div class="loading-state">Cargando categorías...</div>
+            </div>
+        </section>
+
+        <!-- Comentarios Tab -->
+        <section id="comentarios" class="admin-section">
+            <div class="section-header">
+                <h2>Gestión de Comentarios</h2>
+            </div>
+            <div class="filters-bar">
+                <input type="text" id="searchComentarios" placeholder="Buscar comentarios..." class="search-input">
+                <select id="filterComentarioActivo" class="filter-select">
+                    <option value="">Todos</option>
+                    <option value="1">Activos</option>
+                    <option value="0">Inactivos</option>
+                </select>
+            </div>
+            <div id="comentariosContainer" class="comentarios-container">
+                <div class="loading-state">Cargando comentarios...</div>
+            </div>
+        </section>
+
+        <!-- IA Autónoma Tab -->
+        <section id="ia-autonoma" class="admin-section">
+            <div class="section-header">
+                <h2>🤖 IA Autónoma</h2>
+                <p style="color: #666; margin-top: 0.5rem;">La IA está analizando automáticamente a los usuarios y ejecutando acciones cuando es necesario.</p>
+            </div>
+            
+            <!-- Estado de la IA -->
+            <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1.5rem; margin-bottom: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                    <span style="font-size: 2rem;">✅</span>
+                    <div>
+                        <h3 style="margin: 0; color: #2e7d32; font-weight: 600;">IA ACTIVA</h3>
+                        <p style="margin: 0.5rem 0 0 0; color: #2e7d32; font-size: 0.95rem;">
+                            La IA está revisando automáticamente a los usuarios cada 5 minutos y ejecutando acciones cuando detecta problemas.
+                        </p>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #c8e6c9;">
+                    <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">
+                        <strong>Última revisión:</strong> <span id="ultimaRevisionIA" style="font-weight: 600;">Cargando...</span>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Panel de Control -->
+            <div style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="margin-bottom: 1rem;">
+                    <button id="btnLimpiarNotificaciones" class="btn-secondary" style="padding: 1rem 2rem; font-size: 1rem;">
+                        🗑️ Limpiar Notificaciones
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel de Notificaciones de IA -->
+            <div style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; color: #4D8143;">📢 Notificaciones de Acciones Propuestas</h3>
+                <div id="iaNotificaciones" style="max-height: 500px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 2rem; color: #999;">
+                        <p>No hay acciones propuestas aún.</p>
+                        <p style="font-size: 0.9rem;">La IA está analizando automáticamente. Las acciones aparecerán aquí cuando se detecten problemas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log de Acciones Automáticas -->
+            <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; color: #4D8143;">📋 Historial de Acciones Automáticas</h3>
+                <div id="iaHistorial" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 2rem; color: #999;">
+                        <p>No hay acciones ejecutadas aún.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Intentos Ofensivos Tab -->
+        <section id="intentos-ofensivos" class="admin-section">
+            <div class="section-header">
+                <h2>🚫 Intentos de Contenido Ofensivo</h2>
+                <p style="color: #666; margin-top: 0.5rem;">Registro de todos los intentos de publicar contenido ofensivo o obsceno.</p>
+            </div>
+            
+            <!-- Filtros -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Tipo de Intento</label>
+                        <select id="filterTipoIntento" style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            <option value="">Todos</option>
+                            <option value="registro_usuario">Registro de Usuario</option>
+                            <option value="registro_animal">Registro de Animal</option>
+                            <option value="registro_ambiental">Registro Ambiental</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Usuario</label>
+                        <select id="filterUsuarioIntento" style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            <option value="">Todos los usuarios</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button id="btnCargarIntentos" class="btn-primary" onclick="console.log('🔘 [HTML onclick] Botón clickeado'); console.log('🔍 [HTML onclick] window.loadIntentosOfensivos:', typeof window.loadIntentosOfensivos); console.log('🔍 [HTML onclick] loadIntentosOfensivos:', typeof loadIntentosOfensivos); try { if(typeof window.loadIntentosOfensivos === 'function') { window.loadIntentosOfensivos(); } else if(typeof loadIntentosOfensivos === 'function') { loadIntentosOfensivos(); } else { throw new Error('Función no disponible'); } } catch(e) { console.error('❌ Error:', e); alert('Error: ' + e.message + '. Verifica la consola (F12) para más detalles.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem; width: 100%;">
+                            🔍 Cargar Intentos
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de Intentos -->
+            <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">ID</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">Usuario</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">Tipo</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">Campos Afectados</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">Contenido</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">IP</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #333;">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="intentosOfensivosTableBody">
+                            <tr>
+                                <td colspan="7" style="padding: 2rem; text-align: center; color: #999;">
+                                    Haz clic en "Cargar Intentos" para ver los registros
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="paginacionIntentos" style="margin-top: 1.5rem; display: none; text-align: center;">
+                    <button id="btnAnteriorIntentos" class="btn-secondary" style="margin-right: 1rem;">← Anterior</button>
+                    <span id="infoPaginacionIntentos" style="margin: 0 1rem;"></span>
+                    <button id="btnSiguienteIntentos" class="btn-secondary">Siguiente →</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <!-- Modal Editar Usuario -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Usuario</h3>
+                <button class="close-btn" onclick="closeModal('editUserModal')">✕</button>
+            </div>
+            <form id="editUserForm" class="modal-form">
+                <input type="hidden" id="editUserId">
+                <div id="restrictedFieldsNotice" style="display: none; background: #fff3cd; border-left: 4px solid #ffc107; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem; color: #856404;">
+                    <strong>⚠ Nota:</strong> Los usuarios normales no pueden modificar su apodo ni contraseña desde el panel de administración.
+                </div>
+                <div class="form-group">
+                    <label>Apodo (Público)</label>
+                    <input type="text" id="editUserName" required>
+                    <small style="color: #666; margin-top: 0.3rem; display: block;">Este apodo será visible para otros usuarios.</small>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="editUserEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="editUserRol" required>
+                        <option value="usuario">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="editUserActivo" required>
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nueva Contraseña (dejar vacío para no cambiar)</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="editUserPassword">
+                        <button type="button" class="password-toggle" onclick="togglePassword('editUserPassword', this)" aria-label="Mostrar contraseña">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editUserModal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Usuario -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Usuario</h3>
+                <button class="close-btn" onclick="closeModal('addUserModal')">✕</button>
+            </div>
+            <form id="addUserForm" class="modal-form">
+                <div class="form-group">
+                    <label>Apodo (Público)</label>
+                    <input type="text" id="addUserName" required placeholder="Elige un apodo que será visible públicamente">
+                    <small style="color: #666; margin-top: 0.3rem; display: block;">Este apodo será visible para otros usuarios. Elige uno apropiado.</small>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="addUserEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="addUserPassword" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('addUserPassword', this)" aria-label="Mostrar contraseña">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="addUserRol" required>
+                        <option value="usuario">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addUserModal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Crear Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Dar Advertencia -->
+    <div id="advertenciaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dar Advertencia</h3>
+                <button class="close-btn" onclick="closeModal('advertenciaModal')">✕</button>
+            </div>
+            <form id="advertenciaForm" class="modal-form">
+                <input type="hidden" id="advertenciaUsuarioId">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="advertenciaUsuarioNombre" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label>Motivo <span style="color: #d32f2f;">*</span></label>
+                    <textarea id="advertenciaMotivo" rows="4" required placeholder="Describe el motivo de la advertencia..."></textarea>
+                </div>
+                <div id="aiSuggestionAdvertencia" style="display: none; background: #f0f4ff; border-left: 4px solid #6366f1; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
+                    <div style="display: flex; align-items: start; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">🤖</span>
+                        <div style="flex: 1;">
+                            <strong style="color: #6366f1;">Asistente IA:</strong>
+                            <div id="aiSuggestionAdvertenciaText" style="margin-top: 0.5rem; color: #333;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
+                    <strong>ℹ️ Nota:</strong> Al llegar a 3 advertencias, se aplicará automáticamente un ban temporal de 7 días. Si el usuario ya tiene 2 bans temporales previos, se aplicará un ban permanente.
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('advertenciaModal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Dar Advertencia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Dar Ban -->
+    <div id="banModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dar Ban</h3>
+                <button class="close-btn" onclick="closeModal('banModal')">✕</button>
+            </div>
+            <form id="banForm" class="modal-form">
+                <input type="hidden" id="banUsuarioId">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="banUsuarioNombre" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Ban <span style="color: #d32f2f;">*</span></label>
+                    <select id="banTipo" required>
+                        <option value="temporal">Temporal</option>
+                        <option value="permanente">Permanente</option>
+                    </select>
+                </div>
+                <div class="form-group" id="banDiasGroup">
+                    <label>Duración (días) <span style="color: #d32f2f;">*</span></label>
+                    <input type="number" id="banDias" min="1" value="7" required>
+                </div>
+                <div class="form-group">
+                    <label>Motivo <span style="color: #d32f2f;">*</span></label>
+                    <textarea id="banMotivo" rows="4" required placeholder="Describe el motivo del ban..."></textarea>
+                </div>
+                <div id="aiSuggestionBan" style="display: none; background: #f0f4ff; border-left: 4px solid #6366f1; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
+                    <div style="display: flex; align-items: start; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">🤖</span>
+                        <div style="flex: 1;">
+                            <strong style="color: #6366f1;">Asistente IA:</strong>
+                            <div id="aiSuggestionBanText" style="margin-top: 0.5rem; color: #333;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
+                    <strong>⚠️ Nota:</strong> Si el usuario ya tiene 2 bans temporales previos y se intenta dar otro ban temporal, se convertirá automáticamente en ban permanente.
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('banModal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Aplicar Ban</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ver Sanciones -->
+    <div id="sancionesModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Sanciones del Usuario</h3>
+                <button class="close-btn" onclick="closeModal('sancionesModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="sancionesUsuarioInfo" style="margin-bottom: 2rem;"></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem;">⚠️ Advertencias</h4>
+                        <div id="sancionesAdvertencias" class="loading">Cargando...</div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem;">🚫 Bans</h4>
+                        <div id="sancionesBans" class="loading">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeModal('sancionesModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/admin-auth.js"></script>
+    <!-- Definir función ANTES de cargar admin.js para asegurar disponibilidad -->
+    <script>
+        // Variables globales necesarias
+        window.intentosOfensivos = [];
+        window.paginaIntentos = 0;
+        window.limiteIntentos = 20;
+        
+        // Definir función DIRECTAMENTE en window ANTES de cargar admin.js
+        window.loadIntentosOfensivos = async function() {
+            console.log('🔍 [HTML Inline] Función ejecutada desde script inline');
+            const tbody = document.getElementById('intentosOfensivosTableBody');
+            if (!tbody) {
+                console.error('❌ No se encontró tbody');
+                alert('Error: No se encontró la tabla.');
+                return;
+            }
+            
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #999;">Cargando...</td></tr>';
+            
+            try {
+                const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+                if (!token) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error: No autenticado</td></tr>';
+                    return;
+                }
+                
+                const tipoIntento = document.getElementById('filterTipoIntento')?.value || '';
+                const usuarioId = document.getElementById('filterUsuarioIntento')?.value || '';
+                
+                let url = `../api/api.php?action=get_intentos_ofensivos&token=${token}&limit=${window.limiteIntentos}&offset=${window.paginaIntentos * window.limiteIntentos}`;
+                if (tipoIntento) url += `&tipo_intento=${tipoIntento}`;
+                if (usuarioId) url += `&usuario_id=${usuarioId}`;
+                
+                console.log('🔍 [HTML Inline] URL:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                console.log('📊 [HTML Inline] Respuesta:', data);
+                
+                if (data.success) {
+                    window.intentosOfensivos = data.intentos || [];
+                    console.log(`✅ Cargados ${window.intentosOfensivos.length} intentos`);
+                    
+                    // Renderizar resultados
+                    if (window.intentosOfensivos.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #999;">No hay intentos registrados</td></tr>';
+                    } else {
+                        // Agrupar intentos por usuario
+                        const intentosAgrupados = {};
+                        
+                        window.intentosOfensivos.forEach(intento => {
+                            let claveAgrupacion;
+                            
+                            if (intento.tipo_intento === 'registro_usuario') {
+                                // Agrupar por email para intentos de registro
+                                const email = intento.intento_email || intento.usuario_email || 'unknown';
+                                claveAgrupacion = `email_${email}`;
+                            } else {
+                                // Para otros tipos, agrupar por usuario_id o IP
+                                claveAgrupacion = intento.usuario_id 
+                                    ? `usuario_${intento.usuario_id}` 
+                                    : `ip_${intento.ip_address || 'unknown'}`;
+                            }
+                            
+                            if (!intentosAgrupados[claveAgrupacion]) {
+                                intentosAgrupados[claveAgrupacion] = [];
+                            }
+                            intentosAgrupados[claveAgrupacion].push(intento);
+                        });
+                        
+                        // Renderizar grupos
+                        let html = '';
+                        Object.keys(intentosAgrupados).forEach(clave => {
+                            const grupo = intentosAgrupados[clave];
+                            const primerIntento = grupo[0];
+                            const cantidadIntentos = grupo.length;
+                            const esAgrupado = cantidadIntentos > 1;
+                            
+                            // Badge de tipo mejorado
+                            const tipoBadge = {
+                                'registro_usuario': '<span style="background: #dc3545; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Registro Usuario</span>',
+                                'registro_animal': '<span style="background: #ff9800; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Registro Animal</span>',
+                                'registro_ambiental': '<span style="background: #2196f3; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Registro Ambiental</span>'
+                            }[primerIntento.tipo_intento] || '<span style="background: #6c757d; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' + primerIntento.tipo_intento + '</span>';
+                            
+                            // Información del usuario
+                            let usuarioInfo = '';
+                            if (primerIntento.usuario_id && primerIntento.usuario_nombre) {
+                                usuarioInfo = `<strong style="color: #333;">${primerIntento.usuario_nombre}</strong><br><small style="color: #666;">${primerIntento.usuario_email}</small>`;
+                            } else if (primerIntento.intento_email) {
+                                usuarioInfo = `<strong style="color: #f57c00;">${primerIntento.intento_email}</strong><br><small style="color: #999; font-size: 0.8rem;">(No registrado)</small>`;
+                            } else {
+                                usuarioInfo = '<span style="color: #999;">Usuario no identificado</span>';
+                            }
+                            
+                            // Badge de cantidad si está agrupado
+                            if (esAgrupado) {
+                                usuarioInfo += `<br><span style="background: #ff9800; color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">${cantidadIntentos} intento${cantidadIntentos > 1 ? 's' : ''}</span>`;
+                            }
+                            
+                            // Consolidar campos afectados y contenido
+                            const todosLosCampos = new Set();
+                            const todosLosContenidos = [];
+                            
+                            grupo.forEach(intento => {
+                                if (intento.campos_afectados) {
+                                    intento.campos_afectados.split(', ').forEach(campo => todosLosCampos.add(campo.trim()));
+                                }
+                                
+                                if (intento.contenido_intentado) {
+                                    const contenido = typeof intento.contenido_intentado === 'string' 
+                                        ? JSON.parse(intento.contenido_intentado) 
+                                        : intento.contenido_intentado;
+                                    
+                                    const contenidoTexto = contenido.nombre || contenido.email || contenido.password || contenido.notas || null;
+                                    if (contenidoTexto && !todosLosContenidos.includes(contenidoTexto)) {
+                                        todosLosContenidos.push(contenidoTexto);
+                                    }
+                                }
+                            });
+                            
+                            const camposBadges = Array.from(todosLosCampos).map(campo => 
+                                `<span style="background: #dc3545; color: white; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; margin-right: 0.25rem; display: inline-block;">${campo}</span>`
+                            ).join('');
+                            
+                            const contenidoPreview = todosLosContenidos.length > 0 
+                                ? todosLosContenidos.slice(0, 3).join(', ') + (todosLosContenidos.length > 3 ? '...' : '')
+                                : 'N/A';
+                            
+                            // Fecha: mostrar rango si hay múltiples intentos
+                            let fechaTexto = new Date(primerIntento.fecha_intento).toLocaleString('es-ES');
+                            if (esAgrupado && grupo.length > 1) {
+                                const ultimoIntento = grupo[grupo.length - 1];
+                                fechaTexto = `${new Date(primerIntento.fecha_intento).toLocaleString('es-ES')}<br><small style="color: #999;">Último: ${new Date(ultimoIntento.fecha_intento).toLocaleString('es-ES')}</small>`;
+                            }
+                            
+                            html += `
+                                <tr style="border-bottom: 1px solid #eee; ${esAgrupado ? 'background: #fff9e6;' : ''}">
+                                    <td style="padding: 1rem;">
+                                        ${esAgrupado ? `<strong>${primerIntento.id}-${grupo[grupo.length - 1].id}</strong><br><small style="color: #999;">(${cantidadIntentos} registros)</small>` : primerIntento.id}
+                                    </td>
+                                    <td style="padding: 1rem;">${usuarioInfo}</td>
+                                    <td style="padding: 1rem;">${tipoBadge}</td>
+                                    <td style="padding: 1rem;">${camposBadges || '<span style="color: #999;">N/A</span>'}</td>
+                                    <td style="padding: 1rem; max-width: 300px; font-size: 0.9rem; color: #333;">${contenidoPreview}</td>
+                                    <td style="padding: 1rem; font-family: monospace; font-size: 0.85rem; color: #666;">${primerIntento.ip_address || 'N/A'}</td>
+                                    <td style="padding: 1rem; color: #666;">${fechaTexto}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error: ${data.message}</td></tr>`;
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error de conexión: ' + error.message + '</td></tr>';
+            }
+        };
+        
+        console.log('✅ [HTML Inline] Función loadIntentosOfensivos definida directamente en HTML');
+        console.log('✅ [HTML Inline] window.loadIntentosOfensivos:', typeof window.loadIntentosOfensivos);
+    </script>
+    <script src="../assets/js/admin.js"></script>
+    <!-- Script para asegurar que la última revisión se actualice y FORZAR ejecución del análisis -->
+    <script>
+        console.log('🔧 [HTML Script] ========== SCRIPT DE FALLBACK INICIADO ==========');
+        console.log('🔧 [HTML Script] Script de fallback ejecutándose...');
+        
+        // Función para verificar y ejecutar análisis
+        function verificarYEjecutarAnalisis() {
+            console.log('🔧 [HTML Script] Verificando funciones...');
+            const estado = {
+                iniciarIAAutonoma: typeof window.iniciarIAAutonoma,
+                analizarUsuariosConIA: typeof window.analizarUsuariosConIA,
+                adminAuthSystem: typeof window.adminAuthSystem,
+                adminAuthSystemDefinido: typeof window.adminAuthSystem !== 'undefined'
+            };
+            console.log('🔧 [HTML Script] Estado de funciones:', estado);
+            
+            if (window.adminAuthSystem) {
+                console.log('🔧 [HTML Script] adminAuthSystem encontrado, verificando autenticación...');
+                const isAuth = window.adminAuthSystem.isAuthenticated();
+                console.log('🔧 [HTML Script] isAuthenticated():', isAuth);
+                const token = window.adminAuthSystem.getToken();
+                console.log('🔧 [HTML Script] Token:', token ? 'SÍ (longitud: ' + token.length + ')' : 'NO');
+                
+                if (token && typeof window.analizarUsuariosConIA === 'function') {
+                    console.log('🚀 [HTML Script] ========== FORZANDO EJECUCIÓN DEL ANÁLISIS ==========');
+                    console.log('🚀 [HTML Script] Ejecutando window.analizarUsuariosConIA(true)...');
+                    window.analizarUsuariosConIA(true).then(() => {
+                        console.log('✅ [HTML Script] Análisis completado exitosamente desde HTML');
+                    }).catch(error => {
+                        console.error('❌ [HTML Script] Error al ejecutar análisis:', error);
+                        console.error('❌ [HTML Script] Mensaje:', error.message);
+                        console.error('❌ [HTML Script] Stack:', error.stack);
+                    });
+                } else {
+                    console.error('❌ [HTML Script] No se puede ejecutar análisis:', {
+                        tieneToken: !!token,
+                        tieneFuncion: typeof window.analizarUsuariosConIA === 'function'
+                    });
+                }
+            } else {
+                console.error('❌ [HTML Script] adminAuthSystem no está disponible');
+            }
+        }
+        
+        // Intentar múltiples veces con diferentes delays
+        console.log('🔧 [HTML Script] Programando verificaciones en 1s, 2s, 3s, 5s...');
+        setTimeout(() => {
+            console.log('🔧 [HTML Script] Intento 1 (1 segundo)...');
+            verificarYEjecutarAnalisis();
+        }, 1000);
+        
+        setTimeout(() => {
+            console.log('🔧 [HTML Script] Intento 2 (2 segundos)...');
+            verificarYEjecutarAnalisis();
+        }, 2000);
+        
+        setTimeout(() => {
+            console.log('🔧 [HTML Script] Intento 3 (3 segundos)...');
+            verificarYEjecutarAnalisis();
+        }, 3000);
+        
+        setTimeout(() => {
+            console.log('🔧 [HTML Script] Intento 4 (5 segundos)...');
+            verificarYEjecutarAnalisis();
+        }, 5000);
+    </script>
+    <script>
+        // Función para actualizar última revisión (fallback si admin.js no lo hace)
+        function actualizarUltimaRevisionFallback() {
+            const elemento = document.getElementById('ultimaRevisionIA');
+            if (elemento && elemento.textContent === 'Cargando...') {
+                const ahora = new Date();
+                const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const fecha = ahora.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                elemento.textContent = `${fecha} a las ${hora}`;
+                console.log('✅ [HTML Fallback] Última revisión actualizada:', `${fecha} a las ${hora}`);
+            }
+        }
+        
+        // Intentar actualizar después de que se cargue todo
+        setTimeout(() => {
+            actualizarUltimaRevisionFallback();
+            // Si existe la función de admin.js, también llamarla
+            if (typeof window.actualizarUltimaRevision === 'function') {
+                window.actualizarUltimaRevision();
+            }
+        }, 500);
+        
+        setTimeout(() => {
+            actualizarUltimaRevisionFallback();
+            if (typeof window.actualizarUltimaRevision === 'function') {
+                window.actualizarUltimaRevision();
+            }
+        }, 1500);
+        
+        // Observar cuando se hace clic en la pestaña de IA
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabIA = document.querySelector('[data-tab="ia-autonoma"]');
+            if (tabIA) {
+                tabIA.addEventListener('click', () => {
+                    setTimeout(() => {
+                        actualizarUltimaRevisionFallback();
+                        if (typeof window.actualizarUltimaRevision === 'function') {
+                            window.actualizarUltimaRevision();
+                        }
+                    }, 200);
+                });
+            }
+        });
+
+        // Función para alternar visibilidad de contraseña
+        function togglePassword(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (input) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                    button.setAttribute('aria-label', 'Ocultar contraseña');
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                    button.setAttribute('aria-label', 'Mostrar contraseña');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+

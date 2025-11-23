@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Bloc de Notas - Contraloría Social Tamaulipas</title>
+
+    <link rel="stylesheet" href="../assets/css/styles.css">
+
+    <style>
+
+        .notes-container {
+
+            max-width: 1000px;
+
+            margin: 2rem auto;
+
+            padding: 0 2rem;
+
+        }
+
+        
+
+        .notes-header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 2rem;
+
+        }
+
+        
+
+        .notes-header h2 {
+
+            color: #4D8143;
+
+        }
+
+        
+
+        .notes-list {
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 1rem;
+
+        }
+
+        
+
+        .note-item {
+
+            background: white;
+
+            padding: 1.5rem;
+
+            border-radius: 8px;
+
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+        }
+
+        
+
+        .note-header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: start;
+
+            margin-bottom: 1rem;
+
+        }
+
+        
+
+        .note-title {
+
+            font-weight: 600;
+
+            font-size: 1.1rem;
+
+            color: #333;
+
+        }
+
+        
+
+        .note-date {
+
+            color: #666;
+
+            font-size: 0.9rem;
+
+        }
+
+        
+
+        .note-content {
+
+            color: #555;
+
+            line-height: 1.6;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+ 
+
+    <header class="header">
+
+        <h1>Registro de Animales</h1>
+
+        <nav class="nav-bar">
+
+            <a href="index.html" class="nav-item">
+
+                <span class="nav-icon">📚</span>
+
+                Biblioteca
+
+            </a>
+
+            <a href="mapa-consolidado.html" class="nav-item">
+
+                <span class="nav-icon">🗺</span>
+
+                Mapa Consolidado
+
+            </a>
+
+            <a href="bloc-notas.html" class="nav-item active">
+
+                <span class="nav-icon">📝</span>
+
+                Bloc de Notas
+
+            </a>
+
+            <a href="admin.html" class="nav-item admin-nav-item" id="adminNavItem" style="display: none;">
+
+                <span class="nav-icon">⚙</span>
+
+                Administración
+
+            </a>
+
+        </nav>
+
+        <div class="user-info">
+
+            <span id="userName" class="user-name"></span>
+
+            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Notes Container -->
+
+    <div class="notes-container">
+
+        <div class="notes-header">
+
+            <h2>Resumen de Registros</h2>
+            
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <select id="sortSelect" style="padding: 0.5rem 1rem; border: 2px solid #4D8143; border-radius: 8px; font-size: 1rem; background: white; color: #333; cursor: pointer;">
+                    <option value="recientes">Más recientes primero</option>
+                    <option value="antiguos">Más antiguos primero</option>
+                    <option value="nombre_asc">Nombre A-Z</option>
+                    <option value="nombre_desc">Nombre Z-A</option>
+                    <option value="categoria">Por categoría</option>
+                </select>
+            </div>
+
+        </div>
+
+        
+
+        <div class="notes-list" id="notesList">
+
+            <!-- Las notas se cargarán dinámicamente -->
+
+        </div>
+
+    </div>
+
+
+
+    <script src="../assets/js/auth.js"></script>
+
+    <script>
+        // INTERCEPTAR CLIC EN ENLACE DE BIBLIOTECA para establecer flag antes de navegar
+        // Ejecutar INMEDIATAMENTE sin esperar DOMContentLoaded
+        (function() {
+            // Establecer flag inmediatamente cuando se carga la página (por si el usuario ya está navegando)
+            sessionStorage.setItem('index_acceso_permitido', 'true');
+            console.log('✅ [bloc-notas] Flag establecido al cargar página');
+            
+            // También interceptar clics cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                    if (bibliotecaLink) {
+                        bibliotecaLink.addEventListener('click', function(e) {
+                            console.log('🔗 [bloc-notas] Navegando a Biblioteca - estableciendo flag');
+                            sessionStorage.setItem('navegando_internamente', 'true');
+                            sessionStorage.setItem('index_acceso_permitido', 'true');
+                            console.log('✅ [bloc-notas] Flag de navegación interna establecido');
+                        });
+                    }
+                });
+            } else {
+                // DOM ya está listo
+                const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                if (bibliotecaLink) {
+                    bibliotecaLink.addEventListener('click', function(e) {
+                        console.log('🔗 [bloc-notas] Navegando a Biblioteca - estableciendo flag');
+                        sessionStorage.setItem('navegando_internamente', 'true');
+                        sessionStorage.setItem('index_acceso_permitido', 'true');
+                        console.log('✅ [bloc-notas] Flag de navegación interna establecido');
+                    });
+                }
+            }
+        })();
+    </script>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            // Mostrar información del usuario
+
+            const user = window.authSystem.getCurrentUser();
+
+            if (user) {
+
+                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
+
+                
+
+                // Verificar rol desde la API si no está en la sesión
+
+                let userRol = user.rol;
+
+                if (!userRol) {
+
+                    try {
+
+                        // Detectar entorno para la ruta de API
+                        const currentUrl = window.location.href.toLowerCase();
+                        const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                           currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                        const apiUrl = isHostinger 
+                            ? `/api/api.php?action=get_user_info&user_id=${user.id}`
+                            : `../api/api.php?action=get_user_info&user_id=${user.id}`;
+                        const response = await fetch(apiUrl);
+
+                        const data = await response.json();
+
+                        if (data.success && data.user && data.user.rol) {
+
+                            userRol = data.user.rol;
+
+                            // Actualizar la sesión con el rol
+
+                            const updatedUser = { ...user, rol: userRol };
+
+                            window.authSystem.setSession(updatedUser);
+
+                        }
+
+                    } catch (error) {
+
+                        console.error('Error al obtener rol del usuario:', error);
+
+                    }
+
+                }
+
+                
+
+                // Mostrar botón de administración si es admin
+
+                if (userRol === 'admin') {
+
+                    const adminNavItem = document.getElementById('adminNavItem');
+
+                    if (adminNavItem) {
+
+                        adminNavItem.style.display = 'flex';
+
+                    }
+
+                }
+
+            }
+
+            
+
+            // Botón cerrar sesión
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+
+                if (confirm('¿Deseas cerrar sesión?')) {
+
+                    window.authSystem.logout();
+
+                    window.location.href = 'inicio.html';
+
+                }
+
+            });
+
+            
+
+            loadNotes();
+            
+            // Configurar ordenamiento
+            const sortSelect = document.getElementById('sortSelect');
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    sortAndDisplayRecords();
+                });
+            }
+
+        });
+        
+        let allRecords = []; // Variable global para almacenar todos los registros
+
+
+
+        async function loadNotes() {
+            const notesList = document.getElementById('notesList');
+            const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
+            
+            if (!currentUser) {
+                notesList.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Debes iniciar sesión</h3>
+                        <p>Por favor inicia sesión para ver tus registros</p>
+                        <button onclick="window.location.href='inicio.html'" style="margin-top: 1rem; padding: 0.8rem 2rem; background: #4D8143; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-weight: 600;">
+                            Ir a la Aplicación
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Mostrar estado de carga
+            notesList.innerHTML = `
+                <div class="empty-state">
+                    <h3>Cargando registros...</h3>
+                    <p>Por favor espera</p>
+                </div>
+            `;
+            
+            try {
+                // Detectar entorno para la ruta de API
+                const currentUrl = window.location.href.toLowerCase();
+                const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                   currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                   currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                
+                const currentPath = window.location.pathname;
+                const isInPages = currentPath.indexOf('/pages/') !== -1;
+                
+                let apiUrl;
+                // Cargar TODOS los registros sin filtrar por usuario
+                if (isHostinger) {
+                    // Usar ruta absoluta desde la raíz
+                    apiUrl = `/api/api.php?action=get_registros_ambientales`;
+                } else {
+                    if (isInPages) {
+                        apiUrl = `../api/api.php?action=get_registros_ambientales`;
+                    } else {
+                        apiUrl = `api/api.php?action=get_registros_ambientales`;
+                    }
+                }
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    allRecords = data.records || [];
+                    
+                    if (allRecords.length === 0) {
+                        notesList.innerHTML = `
+                            <div class="empty-state">
+                                <h3>No hay registros aún</h3>
+                                <p>Los registros aparecerán aquí cuando crees tu primer registro</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Ordenar y mostrar registros
+                    sortAndDisplayRecords();
+                } else {
+                    notesList.innerHTML = `
+                        <div class="empty-state">
+                            <h3>Error al cargar registros</h3>
+                            <p>${data.message || 'Intenta recargar la página'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error al cargar registros:', error);
+                notesList.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error de conexión</h3>
+                        <p>No se pudieron cargar los registros. Verifica tu conexión e intenta recargar la página.</p>
+                    </div>
+                `;
+            }
+        }
+
+
+
+        function sortAndDisplayRecords() {
+            const notesList = document.getElementById('notesList');
+            const sortSelect = document.getElementById('sortSelect');
+            const sortBy = sortSelect ? sortSelect.value : 'recientes';
+            
+            let sortedRecords = [...allRecords];
+            
+            // Aplicar ordenamiento según la opción seleccionada
+            switch(sortBy) {
+                case 'recientes':
+                    sortedRecords.sort((a, b) => {
+                        const dateA = new Date(a.fecha + (a.hora ? ' ' + a.hora : ''));
+                        const dateB = new Date(b.fecha + (b.hora ? ' ' + b.hora : ''));
+                        return dateB - dateA; // Más recientes primero
+                    });
+                    break;
+                    
+                case 'antiguos':
+                    sortedRecords.sort((a, b) => {
+                        const dateA = new Date(a.fecha + (a.hora ? ' ' + a.hora : ''));
+                        const dateB = new Date(b.fecha + (b.hora ? ' ' + b.hora : ''));
+                        return dateA - dateB; // Más antiguos primero
+                    });
+                    break;
+                    
+                case 'nombre_asc':
+                    sortedRecords.sort((a, b) => {
+                        const nombreA = (a.nombre || a.descripcion_breve || '').toLowerCase();
+                        const nombreB = (b.nombre || b.descripcion_breve || '').toLowerCase();
+                        return nombreA.localeCompare(nombreB);
+                    });
+                    break;
+                    
+                case 'nombre_desc':
+                    sortedRecords.sort((a, b) => {
+                        const nombreA = (a.nombre || a.descripcion_breve || '').toLowerCase();
+                        const nombreB = (b.nombre || b.descripcion_breve || '').toLowerCase();
+                        return nombreB.localeCompare(nombreA);
+                    });
+                    break;
+                    
+                case 'categoria':
+                    sortedRecords.sort((a, b) => {
+                        const catA = (a.categoria_nombre || '').toLowerCase();
+                        const catB = (b.categoria_nombre || '').toLowerCase();
+                        if (catA !== catB) {
+                            return catA.localeCompare(catB);
+                        }
+                        // Si tienen la misma categoría, ordenar por fecha reciente
+                        const dateA = new Date(a.fecha + (a.hora ? ' ' + a.hora : ''));
+                        const dateB = new Date(b.fecha + (b.hora ? ' ' + b.hora : ''));
+                        return dateB - dateA;
+                    });
+                    break;
+            }
+            
+            // Renderizar registros ordenados
+            notesList.innerHTML = sortedRecords.map(record => {
+                const fecha = record.fecha || record.fecha_creacion;
+                const date = new Date(fecha);
+                const categoriaNombre = record.categoria_nombre || 'Sin categoría';
+                const subcategoriaNombre = record.subcategoria_nombre || '';
+                const nombre = record.nombre || record.descripcion_breve || 'Sin nombre';
+                const especie = record.especie || '';
+                const ubicacion = record.comunidad && record.sitio 
+                    ? `${escapeHtml(record.comunidad)} - ${escapeHtml(record.sitio)}`
+                    : record.latitud && record.longitud 
+                        ? `${record.latitud}, ${record.longitud}`
+                        : 'Sin ubicación';
+                const notas = record.observaciones || record.notas || record.descripcion_breve || 'Sin observaciones';
+                const responsable = record.responsable || '';
+                const brigada = record.brigada || '';
+                const participantes = record.numero_participantes || '';
+                const usuarioNombre = record.usuario_nombre || 'Usuario desconocido';
+                
+                return `
+                    <div class="note-item">
+                        <div class="note-header">
+                            <div>
+                                <div class="note-title">${escapeHtml(nombre)}${especie ? ' - ' + escapeHtml(especie) : ''}</div>
+                                <div class="note-date">${date.toLocaleDateString('es-MX', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric'
+                                })}${record.hora ? ' • ' + record.hora.substring(0, 5) : ''}</div>
+                                ${categoriaNombre ? `<div style="margin-top: 0.5rem;"><span style="background: #4D8143; color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem;">${escapeHtml(categoriaNombre)}</span>${subcategoriaNombre ? ' <span style="background: #6B9B5A; color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem;">' + escapeHtml(subcategoriaNombre) + '</span>' : ''}</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="note-content">
+                            <strong>👤 Registrado por:</strong> ${escapeHtml(usuarioNombre)}<br>
+                            ${ubicacion !== 'Sin ubicación' ? `<strong>📍 Ubicación:</strong> ${ubicacion}<br>` : ''}
+                            ${responsable ? `<strong>👤 Responsable:</strong> ${escapeHtml(responsable)}${brigada ? ' - ' + escapeHtml(brigada) : ''}<br>` : ''}
+                            ${participantes ? `<strong>👥 Participantes:</strong> ${participantes}<br>` : ''}
+                            ${record.tipo_actividad ? `<strong>🔧 Tipo de Actividad:</strong> ${escapeHtml(record.tipo_actividad)}<br>` : ''}
+                            <strong>📝 Observaciones:</strong> ${escapeHtml(notas)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+    </script>
+
+</body>
+
+</html>

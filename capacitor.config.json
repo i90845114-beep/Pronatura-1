@@ -1,0 +1,9 @@
+{
+  "appId": "com.pronatura.app",
+  "appName": "ProNatura",
+  "webDir": "www",
+  "server": {
+    "url": "https://organicjournal.com.mx",
+    "cleartext": true
+  }
+}

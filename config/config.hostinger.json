@@ -1,0 +1,21 @@
+{
+    "database": {
+        "host": "localhost",
+        "port": 3306,
+        "database": "u999030405_wp",
+        "user": "u999030405_wp",
+        "password": "TU_NUEVA_CONTRASEÑA_AQUI",
+        "charset": "utf8mb4",
+        "timezone": "America/Mexico_City"
+    },
+    "server": {
+        "port": 8000,
+        "host": "localhost"
+    },
+    "app": {
+        "name": "ProNatura",
+        "version": "1.0.0",
+        "environment": "production"
+    }
+}
+

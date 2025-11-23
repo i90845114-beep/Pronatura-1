@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Categorías - Contraloría Social Tamaulipas</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <style>
+        .catalog-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .catalog-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .catalog-header h1 {
+            color: #2c7a7b;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .catalog-header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .category-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #2c7a7b;
+        }
+        
+        .category-number {
+            background: #2c7a7b;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .category-title {
+            flex: 1;
+        }
+        
+        .category-title h2 {
+            color: #2c7a7b;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        
+        .category-title .category-code {
+            color: #999;
+            font-size: 0.9rem;
+            font-weight: normal;
+        }
+        
+        .category-description {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .subcategories-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .subcategory-item {
+            background: #f8f9fa;
+            border-left: 4px solid #4caf50;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .subcategory-item:hover {
+            background: #e8f5e9;
+        }
+        
+        .subcategory-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subcategory-code {
+            background: #4caf50;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        
+        .subcategory-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+        }
+        
+        .subcategory-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-left: 0.5rem;
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .error-state {
+            text-align: center;
+            padding: 3rem;
+            color: #d32f2f;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+        
+        @media (max-width: 768px) {
+            .catalog-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .catalog-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>Catálogo de Categorías</h1>
+        <nav class="nav-bar">
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">📚</span>
+                Biblioteca
+            </a>
+            <a href="mapa-consolidado.html" class="nav-item">
+                <span class="nav-icon">🗺️</span>
+                Mapa Consolidado
+            </a>
+            <a href="bloc-notas.html" class="nav-item">
+                <span class="nav-icon">📝</span>
+                Bloc de Notas
+            </a>
+            <a href="catalogo.html" class="nav-item active">
+                <span class="nav-icon">📋</span>
+                Catálogo
+            </a>
+        </nav>
+        <div class="user-info">
+            <span id="userName" class="user-name"></span>
+            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="catalog-container">
+            <div class="catalog-header">
+                <h1>🌳 Catálogo Completo de Categorías</h1>
+                <p>Bitácora Digital de Conservación Ambiental Comunitaria</p>
+            </div>
+            
+            <div id="catalogContent">
+                <div class="loading-state">
+                    <p>Cargando catálogo...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        // Mostrar información del usuario
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = window.authSystem ? window.authSystem.getCurrentUser() : null;
+            if (user) {
+                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
+            }
+            
+            // Botón cerrar sesión
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (confirm('¿Deseas cerrar sesión?')) {
+                        window.authSystem.logout();
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
+            
+            // Cargar catálogo
+            loadCatalog();
+        });
+        
+        // Cargar catálogo completo
+        async function loadCatalog() {
+            const contentDiv = document.getElementById('catalogContent');
+            
+            try {
+                // Cargar todas las categorías
+                const categoriasResponse = await fetch('../api/api.php?action=get_categorias');
+                const categoriasData = await categoriasResponse.json();
+                
+                if (!categoriasData.success) {
+                    throw new Error('Error al cargar categorías');
+                }
+                
+                const categorias = categoriasData.categorias;
+                
+                // Para cada categoría, cargar sus subcategorías
+                const categoriasConSubcategorias = await Promise.all(
+                    categorias.map(async (categoria) => {
+                        const subcategoriasResponse = await fetch(
+                            `../api/api.php?action=get_subcategorias&categoria_id=${categoria.id}`
+                        );
+                        const subcategoriasData = await subcategoriasResponse.json();
+                        
+                        return {
+                            ...categoria,
+                            subcategorias: subcategoriasData.success ? subcategoriasData.subcategorias : []
+                        };
+                    })
+                );
+                
+                // Ordenar por orden
+                categoriasConSubcategorias.sort((a, b) => a.orden - b.orden);
+                
+                // Renderizar catálogo
+                if (categoriasConSubcategorias.length === 0) {
+                    contentDiv.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No hay categorías disponibles</h3>
+                            <p>Las categorías se crearán al ejecutar el script de base de datos.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                contentDiv.innerHTML = `
+                    <div class="catalog-grid">
+                        ${categoriasConSubcategorias.map((categoria, index) => createCategoryCard(categoria, index + 1)).join('')}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error al cargar catálogo:', error);
+                contentDiv.innerHTML = `
+                    <div class="error-state">
+                        <h3>Error al cargar el catálogo</h3>
+                        <p>${error.message}</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
+                            Asegúrate de que la base de datos esté configurada correctamente.
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Crear tarjeta de categoría
+        function createCategoryCard(categoria, numero) {
+            const subcategoriasHtml = categoria.subcategorias.length > 0
+                ? `
+                    <ul class="subcategories-list">
+                        ${categoria.subcategorias.map(sub => `
+                            <li class="subcategory-item">
+                                <div class="subcategory-header">
+                                    <span class="subcategory-code">${escapeHtml(sub.codigo)}</span>
+                                    <span class="subcategory-name">${escapeHtml(sub.nombre)}</span>
+                                </div>
+                                ${sub.descripcion ? `
+                                    <div class="subcategory-description">${escapeHtml(sub.descripcion)}</div>
+                                ` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                `
+                : '<p style="color: #999; font-style: italic;">Sin subcategorías</p>';
+            
+            return `
+                <div class="category-card">
+                    <div class="category-header">
+                        <div class="category-number">${numero}</div>
+                        <div class="category-title">
+                            <h2>${escapeHtml(categoria.nombre)}</h2>
+                            <span class="category-code">${escapeHtml(categoria.codigo)}</span>
+                        </div>
+                    </div>
+                    ${categoria.descripcion ? `
+                        <div class="category-description">${escapeHtml(categoria.descripcion)}</div>
+                    ` : ''}
+                    ${subcategoriasHtml}
+                </div>
+            `;
+        }
+        
+        // Escapar HTML para prevenir XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mapa Consolidado - Contraloría Social Tamaulipas</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4D8143">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ProNatura">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
+
+    <link rel="stylesheet" href="../assets/css/styles.css">
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="anonymous"
+    />
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""
+    ></script>
+
+    <style>
+        .map-view {
+            height: calc(100vh - 200px);
+            border-radius: 12px;
+            margin: 2rem;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        #leafletMap {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            border-radius: 12px;
+            z-index: 1;
+        }
+        
+        /* Asegurar que el contenedor del mapa tenga altura */
+        .map-view {
+            position: relative;
+        }
+
+        .map-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .leaflet-popup-content {
+            margin: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #2c7a7b;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .popup-info {
+            color: #555;
+            margin: 0.25rem 0;
+        }
+
+        .leaflet-tooltip {
+            background: rgba(44, 122, 123, 0.95);
+            border: 2px solid white;
+            border-radius: 8px;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            max-width: 250px;
+        }
+
+        .leaflet-tooltip-top:before {
+            border-top-color: white;
+        }
+
+        .leaflet-tooltip-bottom:before {
+            border-bottom-color: white;
+        }
+
+        .leaflet-tooltip-left:before {
+            border-left-color: white;
+        }
+
+        .leaflet-tooltip-right:before {
+            border-right-color: white;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Header -->
+
+    <header class="header">
+
+        <h1>Registro de Animales</h1>
+
+        <nav class="nav-bar">
+
+            <a href="index.html" class="nav-item">
+
+                <span class="nav-icon">📚</span>
+
+                Biblioteca
+
+            </a>
+
+            <a href="mapa-consolidado.html" class="nav-item active">
+
+                <span class="nav-icon">🗺</span>
+
+                Mapa Consolidado
+
+            </a>
+
+            <a href="bloc-notas.html" class="nav-item">
+
+                <span class="nav-icon">📝</span>
+
+                Bloc de Notas
+
+            </a>
+
+            <a href="admin.html" class="nav-item admin-nav-item" id="adminNavItem" style="display: none;">
+
+                <span class="nav-icon">⚙</span>
+
+                Administración
+
+            </a>
+
+        </nav>
+
+        <div class="user-info">
+
+            <span id="userName" class="user-name"></span>
+
+            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Map View -->
+    <div class="map-view">
+        <div id="leafletMap"></div>
+    </div>
+
+
+
+    <script src="../assets/js/auth.js"></script>
+
+    <script>
+        // INTERCEPTAR CLIC EN ENLACE DE BIBLIOTECA para establecer flag antes de navegar
+        // Ejecutar INMEDIATAMENTE sin esperar DOMContentLoaded
+        (function() {
+            // Establecer flag inmediatamente cuando se carga la página (por si el usuario ya está navegando)
+            sessionStorage.setItem('index_acceso_permitido', 'true');
+            console.log('✅ [mapa-consolidado] Flag establecido al cargar página');
+            
+            // También interceptar clics cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                    if (bibliotecaLink) {
+                        bibliotecaLink.addEventListener('click', function(e) {
+                            console.log('🔗 [mapa-consolidado] Navegando a Biblioteca - estableciendo flag');
+                            sessionStorage.setItem('navegando_internamente', 'true');
+                            sessionStorage.setItem('index_acceso_permitido', 'true');
+                            console.log('✅ [mapa-consolidado] Flag de navegación interna establecido');
+                        });
+                    }
+                });
+            } else {
+                // DOM ya está listo
+                const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                if (bibliotecaLink) {
+                    bibliotecaLink.addEventListener('click', function(e) {
+                        console.log('🔗 [mapa-consolidado] Navegando a Biblioteca - estableciendo flag');
+                        sessionStorage.setItem('navegando_internamente', 'true');
+                        sessionStorage.setItem('index_acceso_permitido', 'true');
+                        console.log('✅ [mapa-consolidado] Flag de navegación interna establecido');
+                    });
+                }
+            }
+        })();
+    </script>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            // Mostrar información del usuario
+
+            const user = window.authSystem.getCurrentUser();
+
+            if (user) {
+
+                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
+
+                
+
+                // Verificar rol desde la API si no está en la sesión
+
+                let userRol = user.rol;
+
+                if (!userRol) {
+
+                    try {
+
+                        const response = await fetch(`../api/api.php?action=get_user_info&user_id=${user.id}`);
+
+                        const data = await response.json();
+
+                        if (data.success && data.user && data.user.rol) {
+
+                            userRol = data.user.rol;
+
+                            // Actualizar la sesión con el rol
+
+                            const updatedUser = { ...user, rol: userRol };
+
+                            window.authSystem.setSession(updatedUser);
+
+                        }
+
+                    } catch (error) {
+
+                        console.error('Error al obtener rol del usuario:', error);
+
+                    }
+
+                }
+
+                
+
+                // Mostrar botón de administración si es admin
+
+                if (userRol === 'admin') {
+
+                    const adminNavItem = document.getElementById('adminNavItem');
+
+                    if (adminNavItem) {
+
+                        adminNavItem.style.display = 'flex';
+
+                    }
+
+                }
+
+            }
+
+            
+
+            // Botón cerrar sesión
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+
+                if (confirm('¿Deseas cerrar sesión?')) {
+
+                    window.authSystem.logout();
+
+                    window.location.href = 'inicio.html';
+
+                }
+
+            });
+
+            
+
+            await loadMapMarkers();
+
+        });
+
+
+
+        // Variable global para el mapa de Leaflet
+        let map = null;
+
+        async function loadMapMarkers() {
+            try {
+                // Verificar que Leaflet esté cargado
+                if (typeof L === 'undefined') {
+                    console.error('Leaflet no está cargado');
+                    document.getElementById('leafletMap').innerHTML = '<div style="padding: 2rem; text-align: center; color: #d32f2f;"><h3>Error: Leaflet no se cargó correctamente</h3><p>Recarga la página</p></div>';
+                    return;
+                }
+
+                // Inicializar el mapa de Leaflet centrado en Tamaulipas
+                if (!map) {
+                    const mapContainer = document.getElementById('leafletMap');
+                    if (!mapContainer) {
+                        console.error('Contenedor del mapa no encontrado');
+                        return;
+                    }
+                    
+                    // Coordenadas del centro de Tamaulipas
+                    const tamaulipasCenter = [23.7, -99.0];
+                    
+                    // Crear el mapa
+                    map = L.map('leafletMap', {
+                        center: tamaulipasCenter,
+                        zoom: 7,
+                        zoomControl: true,
+                        preferCanvas: false
+                    });
+
+                    // Agregar capa de OpenStreetMap
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }).addTo(map);
+
+                    // Forzar actualización del mapa después de que se renderice
+                    setTimeout(() => {
+                        if (map) {
+                            map.invalidateSize();
+                            console.log('Mapa inicializado correctamente');
+                        }
+                    }, 300);
+                }
+            } catch (error) {
+                console.error('Error al inicializar el mapa:', error);
+                document.getElementById('leafletMap').innerHTML = `<div style="padding: 2rem; text-align: center; color: #d32f2f;"><h3>Error al cargar el mapa</h3><p>${error.message}</p></div>`;
+                return;
+            }
+
+            // Obtener TODOS los registros desde la API
+            let records = [];
+            
+            try {
+                // Detectar entorno para la ruta de API
+                const currentUrl = window.location.href.toLowerCase();
+                const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                   currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                   currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                
+                const currentPath = window.location.pathname;
+                const isInPages = currentPath.indexOf('/pages/') !== -1;
+                
+                let apiUrl;
+                // Cargar TODOS los registros sin filtrar por usuario
+                if (isHostinger) {
+                    apiUrl = `api/api.php?action=get_registros_ambientales`;
+                } else {
+                    if (isInPages) {
+                        apiUrl = `../api/api.php?action=get_registros_ambientales`;
+                    } else {
+                        apiUrl = `api/api.php?action=get_registros_ambientales`;
+                    }
+                }
+                
+                console.log('🔍 Cargando todos los registros desde:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.records) {
+                    records = data.records;
+                    console.log('✅ Registros cargados desde API:', records.length);
+                } else {
+                    console.warn('⚠️ No se pudieron cargar registros desde la API:', data.message);
+                }
+            } catch (error) {
+                console.error('❌ Error al cargar registros desde API:', error);
+                // Si hay error, intentar con localStorage como respaldo
+                const localRecords = JSON.parse(localStorage.getItem('animalRecords') || '[]');
+                records = localRecords;
+                console.log('📦 Registros cargados desde localStorage (respaldo):', records.length);
+            }
+            
+            // Limpiar marcadores anteriores
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            if (records.length === 0) {
+                // Mostrar mensaje en el mapa si no hay registros
+                if (map) {
+                    const noRecordsPopup = L.popup()
+                        .setLatLng([23.7, -99.0])
+                        .setContent(`
+                            <div style="text-align: center; padding: 1rem;">
+                                <h3 style="color: #666; margin-bottom: 0.5rem;">No hay registros para mostrar</h3>
+                                <p style="color: #999;">Crea registros para verlos en el mapa</p>
+                            </div>
+                        `)
+                        .openOn(map);
+                }
+                return;
+            }
+
+            // Agregar marcadores al mapa
+            let markersCount = 0;
+            records.forEach(record => {
+                if (record.latitud && record.longitud) {
+                    try {
+                        const lat = parseFloat(record.latitud);
+                        const lng = parseFloat(record.longitud);
+                        
+                        // Validar coordenadas (números válidos y dentro de rangos razonables)
+                        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                            createMarker(record, lat, lng);
+                            markersCount++;
+                        }
+                    } catch (error) {
+                        console.error('Error al procesar registro:', record, error);
+                    }
+                }
+            });
+
+            // Si hay marcadores, ajustar la vista para mostrarlos todos
+            if (markersCount > 0) {
+                const bounds = [];
+                records.forEach(record => {
+                    if (record.latitud && record.longitud) {
+                        const lat = parseFloat(record.latitud);
+                        const lng = parseFloat(record.longitud);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            bounds.push([lat, lng]);
+                        }
+                    }
+                });
+                
+                if (bounds.length > 0) {
+                    // Ajustar vista para mostrar todos los marcadores
+                    const group = new L.featureGroup(bounds.map(coord => L.marker(coord)));
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+            }
+        }
+
+        function createMarker(record, lat, lng) {
+            // Crear icono personalizado
+            const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: #2c7a7b; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div><div style="position: absolute; top: 8px; left: 8px; transform: rotate(45deg); color: white; font-size: 18px;">📍</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30],
+                popupAnchor: [0, -30]
+            });
+
+            // Crear marcador
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+
+            // Preparar información para tooltip y popup
+            const usuarioNombre = record.usuario_nombre || 'Usuario desconocido';
+            const fecha = record.fecha || record.fecha_creacion;
+            const fechaFormateada = fecha ? new Date(fecha).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Sin fecha';
+            const hora = record.hora ? record.hora.substring(0, 5) : '';
+            const notas = record.observaciones || record.notas || record.descripcion_breve || '';
+            const nombreRegistro = record.nombre || record.descripcion_breve || 'Sin nombre';
+            
+            // Crear contenido del tooltip (se muestra al pasar el cursor)
+            const tooltipContent = `
+                <div style="font-weight: 600; margin-bottom: 0.25rem;">${escapeHtml(nombreRegistro)}</div>
+                <div style="font-size: 0.85rem;">👤 ${escapeHtml(usuarioNombre)}</div>
+                ${fecha ? `<div style="font-size: 0.85rem;">📅 ${fechaFormateada}${hora ? ' • ' + hora : ''}</div>` : ''}
+            `;
+
+            // Crear contenido del popup (se muestra al hacer clic)
+            const popupContent = `
+                <div class="popup-title">${escapeHtml(nombreRegistro)}</div>
+                <div class="popup-info"><strong>👤 Registrado por:</strong> ${escapeHtml(usuarioNombre)}</div>
+                ${record.especie ? `<div class="popup-info"><strong>Especie:</strong> ${escapeHtml(record.especie)}</div>` : ''}
+                ${fecha ? `<div class="popup-info"><strong>Fecha:</strong> ${fechaFormateada}${hora ? ' • ' + hora : ''}</div>` : ''}
+                ${record.categoria_nombre ? `<div class="popup-info"><strong>Categoría:</strong> ${escapeHtml(record.categoria_nombre)}${record.subcategoria_nombre ? ' - ' + escapeHtml(record.subcategoria_nombre) : ''}</div>` : ''}
+                ${record.comunidad && record.sitio ? `<div class="popup-info"><strong>📍 Ubicación:</strong> ${escapeHtml(record.comunidad)} - ${escapeHtml(record.sitio)}</div>` : ''}
+                ${record.responsable ? `<div class="popup-info"><strong>Responsable:</strong> ${escapeHtml(record.responsable)}${record.brigada ? ' - ' + escapeHtml(record.brigada) : ''}</div>` : ''}
+                ${notas ? `<div class="popup-info"><strong>Observaciones:</strong> ${escapeHtml(notas.length > 150 ? notas.substring(0, 150) + '...' : notas)}</div>` : ''}
+                <div class="popup-info" style="margin-top: 0.5rem; font-size: 0.85rem; color: #999;">
+                    <strong>Coordenadas:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                </div>
+            `;
+
+            // Agregar tooltip al marcador (se muestra al pasar el cursor)
+            marker.bindTooltip(tooltipContent, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -10],
+                className: 'custom-tooltip'
+            });
+
+            // Agregar popup al marcador (se muestra al hacer clic)
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            });
+
+            // Agregar evento de clic
+            marker.on('click', () => {
+                console.log('Marcador clickeado:', record);
+            });
+        }
+
+
+
+        function escapeHtml(text) {
+
+            const div = document.createElement('div');
+
+            div.textContent = text;
+
+            return div.innerHTML;
+
+        }
+
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script src="../assets/js/pwa-register.js"></script>
+
+</body>
+
+</html>

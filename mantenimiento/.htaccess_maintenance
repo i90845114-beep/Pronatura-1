@@ -1,0 +1,32 @@
+# Archivo .htaccess para activar modo mantenimiento
+# 
+# INSTRUCCIONES:
+# 
+# ACTIVAR MANTENIMIENTO:
+# 1. Copia este archivo desde mantenimiento/ a la raíz del proyecto
+# 2. Renombra .htaccess a .htaccess.backup (si existe)
+# 3. Renombra .htaccess_maintenance a .htaccess
+# 4. Copia también maintenance.php a la raíz y renómbralo a index.php
+# 5. Todos los visitantes verán la página de mantenimiento
+# 
+# DESACTIVAR MANTENIMIENTO:
+# 1. Renombra .htaccess a .htaccess_maintenance
+# 2. Renombra .htaccess.backup a .htaccess (si tenías uno antes)
+# 3. Elimina o renombra index.php
+# 4. La página volverá a funcionar normalmente
+
+# Redirigir todas las solicitudes a maintenance.php
+RewriteEngine On
+
+# Permitir acceso a maintenance.php
+RewriteCond %{REQUEST_URI} !^/maintenance\.php$
+RewriteCond %{REQUEST_URI} !^/maintenance\.html$
+
+# Redirigir todo lo demás a maintenance.php
+RewriteRule ^(.*)$ maintenance.php [L]
+
+# Opcional: Permitir acceso a archivos estáticos (CSS, JS, imágenes)
+# Descomenta las siguientes líneas si quieres que los archivos estáticos sigan funcionando:
+# RewriteCond %{REQUEST_URI} \.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$ [NC]
+# RewriteRule ^(.*)$ - [L]
+

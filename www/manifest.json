@@ -1,0 +1,81 @@
+{
+  "name": "ProNatura - Contraloría Social Tamaulipas",
+  "short_name": "ProNatura",
+  "description": "Sistema de registro ambiental y control social para la conservación de la biodiversidad",
+  "start_url": "/pages/inicio.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#4D8143",
+  "theme_color": "#4D8143",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["environment", "education", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nuevo Registro",
+      "short_name": "Nuevo",
+      "description": "Crear un nuevo registro ambiental",
+      "url": "/pages/nuevo-registro.html",
+      "icons": [{ "src": "assets/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Biblioteca",
+      "short_name": "Biblioteca",
+      "description": "Ver todos los registros",
+      "url": "/pages/index.html",
+      "icons": [{ "src": "assets/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Mapa Consolidado",
+      "short_name": "Mapa",
+      "description": "Ver mapa con todos los registros",
+      "url": "/pages/mapa-consolidado.html",
+      "icons": [{ "src": "assets/icons/icon-96x96.png", "sizes": "96x96" }]
+    }
+  ]
+}
+

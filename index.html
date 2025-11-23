@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=pages/inicio.html">
+    <title>Redirigiendo...</title>
+    <script>
+        // Limpiar sesión ANTES de redirigir para asegurar que inicio.html siempre aparezca sin sesión
+        try {
+            sessionStorage.removeItem('current_session');
+            localStorage.removeItem('current_session');
+            console.log('🧹 Sesión limpiada en index.html antes de redirigir');
+        } catch (error) {
+            console.error('❌ Error al limpiar sesión:', error);
+        }
+        
+        // Redirección inmediata a la página de inicio
+        window.location.href = 'pages/inicio.html';
+    </script>
+</head>
+<body>
+    <p>Redirigiendo a la página de inicio... <a href="pages/inicio.html">Haz clic aquí si no eres redirigido automáticamente</a></p>
+</body>
+</html>
+

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Acceso Administrador - Contraloría Social Tamaulipas</title>
+
+    <link rel="stylesheet" href="../assets/css/styles.css">
+
+    <style>
+
+        .auth-container {
+
+            min-height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            background: linear-gradient(135deg, #ffc107 0%, #ff00d4 100%);
+
+            padding: 2rem;
+
+        }
+
+        
+
+        .auth-box {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 3rem;
+
+            max-width: 450px;
+
+            width: 100%;
+
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+
+        }
+
+        
+
+        .auth-title {
+
+            font-size: 2rem;
+
+            color: #ff9800;
+
+            margin-bottom: 0.5rem;
+
+            text-align: center;
+
+        }
+
+        
+
+        .auth-subtitle {
+
+            color: #666;
+
+            text-align: center;
+
+            margin-bottom: 2rem;
+
+        }
+
+        
+
+        .auth-form {
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 1.5rem;
+
+        }
+
+        
+
+        .form-group {
+
+            display: flex;
+
+            flex-direction: column;
+
+        }
+
+        
+
+        .form-group label {
+
+            font-weight: 600;
+
+            margin-bottom: 0.5rem;
+
+            color: #333;
+
+        }
+
+        
+
+        .form-group input {
+
+            padding: 0.8rem;
+
+            border: 2px solid #e0e0e0;
+
+            border-radius: 8px;
+
+            font-size: 1rem;
+
+            transition: border-color 0.3s;
+
+        }
+
+        
+
+        .form-group input:focus {
+
+            outline: none;
+
+            border-color: #ff9800;
+
+        }
+
+        
+
+        .btn-submit {
+
+            padding: 0.9rem;
+
+            background: #ff9800;
+
+            color: white;
+
+            border: none;
+
+            border-radius: 8px;
+
+            font-size: 1.1rem;
+
+            font-weight: 600;
+
+            cursor: pointer;
+
+            transition: background 0.3s;
+
+            margin-top: 0.5rem;
+
+        }
+
+        
+
+        .btn-submit:hover {
+
+            background: #f57c00;
+
+        }
+
+        
+
+        .auth-link {
+
+            text-align: center;
+
+            margin-top: 1.5rem;
+
+            color: #666;
+
+        }
+
+        
+
+        .auth-link a {
+
+            color: #ff9800;
+
+            text-decoration: none;
+
+            font-weight: 600;
+
+        }
+
+        
+
+        .auth-link a:hover {
+
+            text-decoration: underline;
+
+        }
+
+        
+
+        .error-message {
+
+            background: #fee;
+
+            color: #c33;
+
+            padding: 0.8rem;
+
+            border-radius: 8px;
+
+            margin-bottom: 1rem;
+
+            display: none;
+
+        }
+
+        
+
+        .error-message.show {
+
+            display: block;
+
+        }
+
+        
+
+        .warning-box {
+
+            background: #fff3cd;
+
+            border-left: 4px solid #ffc107;
+
+            padding: 1rem;
+
+            border-radius: 8px;
+
+            margin-bottom: 1.5rem;
+
+            font-size: 0.9rem;
+
+            color: #856404;
+
+        }
+
+        /* Estilos para ver/ocultar contraseña */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #666;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s;
+        }
+
+        .password-toggle:hover {
+            color: #ff9800;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+            <h1 class="auth-title">⚙ Acceso Administrador</h1>
+
+            <p class="auth-subtitle">Inicia sesión con tus credenciales de administrador</p>
+
+            
+
+            <div class="warning-box">
+
+                <strong>⚠ Acceso Restringido:</strong> Solo usuarios con rol de administrador pueden acceder a este panel.
+
+            </div>
+
+            
+
+            <div id="errorMessage" class="error-message"></div>
+
+            
+
+            <form id="adminLoginForm" class="auth-form">
+
+                <div class="form-group">
+
+                    <label for="email">Correo Electrónico</label>
+
+                    <input type="email" id="email" name="email" required autocomplete="email">
+
+                </div>
+
+                
+
+                <div class="form-group">
+
+                    <label for="password">Contraseña</label>
+
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password', this)" aria-label="Mostrar contraseña">
+                            👁️
+                        </button>
+                    </div>
+
+                </div>
+
+                
+
+                <button type="submit" class="btn-submit">Iniciar Sesión como Administrador</button>
+
+            </form>
+
+            
+
+            <div class="auth-link">
+
+                <a href="login.html">← Volver al login de usuarios</a>
+
+            </div>
+
+            
+
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e0e0e0; text-align: center;">
+
+                <p style="margin: 0; color: #666; font-size: 0.85rem;">
+
+                    ¿Eres usuario regular? <a href="login.html" style="color: #2c7a7b; font-weight: 600;">Inicia sesión aquí</a>
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    
+
+    <script src="../assets/js/admin-auth.js"></script>
+
+    <script>
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+
+            e.preventDefault();
+
+            
+
+            const email = document.getElementById('email').value.trim();
+
+            const password = document.getElementById('password').value;
+
+            const errorDiv = document.getElementById('errorMessage');
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            
+
+            errorDiv.classList.remove('show');
+
+            
+
+            // Deshabilitar botón mientras se procesa
+
+            submitBtn.disabled = true;
+
+            submitBtn.textContent = 'Verificando...';
+
+            
+
+            try {
+
+                const result = await window.adminAuthSystem.login(email, password);
+
+                if (result.success) {
+
+                    window.location.href = 'admin.html';
+
+                } else {
+
+                    errorDiv.textContent = result.message || 'Correo o contraseña incorrectos';
+
+                    errorDiv.classList.add('show');
+
+                    submitBtn.disabled = false;
+
+                    submitBtn.textContent = 'Iniciar Sesión como Administrador';
+
+                }
+
+            } catch (error) {
+
+                errorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
+
+                errorDiv.classList.add('show');
+
+                submitBtn.disabled = false;
+
+                submitBtn.textContent = 'Iniciar Sesión como Administrador';
+
+            }
+
+        });
+
+        // Función para alternar visibilidad de contraseña
+        function togglePassword(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (input) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                    button.setAttribute('aria-label', 'Ocultar contraseña');
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                    button.setAttribute('aria-label', 'Mostrar contraseña');
+                }
+            }
+        }
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "app": {
+    "name": "ProNatura",
+    "package": "com.pronatura.app",
+    "version": "1.0.0"
+  },
+  "android": {
+    "minSdkVersion": 22,
+    "targetSdkVersion": 34,
+    "compileSdkVersion": 34,
+    "buildToolsVersion": "34.0.0"
+  },
+  "build": {
+    "outputDir": "android/app/build/outputs/apk",
+    "keystore": {
+      "path": "android/app/pronatura-release-key.jks",
+      "alias": "pronatura",
+      "password": "CHANGE_ME"
+    }
+  },
+  "appflow": {
+    "enabled": false,
+    "appId": "",
+    "channel": "production"
+  }
+}
+

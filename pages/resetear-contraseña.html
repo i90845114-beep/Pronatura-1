@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Restablecer Contraseña - Contraloría Social Tamaulipas</title>
+
+    <link rel="stylesheet" href="../assets/css/styles.css" id="cssLink">
+    <script>
+        // Corregir ruta del CSS para Hostinger
+        (function() {
+            var currentUrl = window.location.href.toLowerCase();
+            var cssLink = document.getElementById('cssLink');
+            if (cssLink && (currentUrl.indexOf('hostinger') !== -1 || 
+                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                           currentUrl.indexOf('organicjournal.com.mx') !== -1)) {
+                cssLink.href = 'assets/css/styles.css';
+            }
+        })();
+    </script>
+
+    <style>
+
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4D8143 0%, #2c7a7b 100%);
+            padding: 2rem;
+        }
+
+        .auth-box {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .auth-title {
+            font-size: 2rem;
+            color: #4D8143;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4D8143;
+        }
+
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #666;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s;
+        }
+
+        .password-toggle:hover {
+            color: #4D8143;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+
+        .btn-submit {
+            padding: 0.8rem 2rem;
+            background: #4D8143;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 0.5rem;
+        }
+
+        .btn-submit:hover {
+            background: #3d6a35;
+        }
+
+        .btn-submit:disabled {
+            background: #9e9e9e;
+            cursor: not-allowed;
+        }
+
+        .auth-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+        }
+
+        .auth-link a {
+            color: #4D8143;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+            <h1 class="auth-title">🔑 Restablecer Contraseña</h1>
+
+            <p class="auth-subtitle">Ingresa el código de recuperación y tu nueva contraseña</p>
+
+            <div class="info-box">
+                <strong>ℹ️ Información:</strong> El código de recuperación es válido por 24 horas. Una vez usado, no podrá ser utilizado nuevamente.
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <form id="resetForm" class="auth-form">
+
+                <div class="form-group">
+
+                    <label for="token">Código de Recuperación</label>
+
+                    <input type="text" id="token" name="token" required placeholder="Pega aquí el código que recibiste" autocomplete="off">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="password">Nueva Contraseña</label>
+
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password', this)" aria-label="Mostrar contraseña">
+                            👁️
+                        </button>
+                    </div>
+
+                    <small style="color: #666; margin-top: 0.3rem; display: block;">Mínimo 6 caracteres</small>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="confirmPassword">Confirmar Nueva Contraseña</label>
+
+                    <div class="password-wrapper">
+                        <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password" minlength="6" placeholder="Repite la contraseña">
+                        <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword', this)" aria-label="Mostrar contraseña">
+                            👁️
+                        </button>
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">Restablecer Contraseña</button>
+
+            </form>
+
+            <div class="auth-link">
+
+                <a href="login.html">← Volver al inicio de sesión</a>
+
+            </div>
+
+            <div class="auth-link" style="margin-top: 0.5rem;">
+
+                ¿No tienes un código? <a href="recuperar-contraseña.html">Solicitar código aquí</a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="../assets/js/auth.js" id="authScript"></script>
+    <script>
+        // Corregir ruta del script para Hostinger
+        (function() {
+            var currentUrl = window.location.href.toLowerCase();
+            var authScript = document.getElementById('authScript');
+            if (authScript && (currentUrl.indexOf('hostinger') !== -1 || 
+                              currentUrl.indexOf('hostingersite.com') !== -1 ||
+                              currentUrl.indexOf('organicjournal.com.mx') !== -1)) {
+                authScript.src = 'assets/js/auth.js';
+            }
+        })();
+    </script>
+
+    <script>
+        // Función para alternar visibilidad de contraseña
+        function togglePassword(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (input) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈';
+                    button.setAttribute('aria-label', 'Ocultar contraseña');
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️';
+                    button.setAttribute('aria-label', 'Mostrar contraseña');
+                }
+            }
+        }
+
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const token = document.getElementById('token').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+            const submitBtn = document.getElementById('submitBtn');
+
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+
+            // Validaciones
+            if (!token) {
+                errorDiv.textContent = 'Por favor ingresa el código de recuperación';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (!password) {
+                errorDiv.textContent = 'Por favor ingresa tu nueva contraseña';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = 'La contraseña debe tener al menos 6 caracteres';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = 'Las contraseñas no coinciden';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Restableciendo...';
+
+            try {
+                const response = await fetch('../api/api.php?action=reset_password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: token,
+                        password: password
+                    })
+                });
+
+                const result = await response.json();
+
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Restablecer Contraseña';
+
+                if (result.success) {
+                    successDiv.textContent = result.message || 'Contraseña restablecida exitosamente';
+                    successDiv.classList.add('show');
+                    
+                    // Limpiar el formulario
+                    document.getElementById('token').value = '';
+                    document.getElementById('password').value = '';
+                    document.getElementById('confirmPassword').value = '';
+
+                    // Redirigir al login después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    errorDiv.textContent = result.message || 'Error al restablecer la contraseña';
+                    errorDiv.classList.add('show');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Restablecer Contraseña';
+                errorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
+                errorDiv.classList.add('show');
+            }
+        });
+    </script>
+
+</body>
+
+</html>
+
