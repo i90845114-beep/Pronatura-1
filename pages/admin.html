@@ -94,6 +94,11 @@
             <span class="nav-icon">🚫</span>
             Intentos Ofensivos
         </button>
+        <button class="nav-tab" data-tab="apelaciones">
+            <span class="nav-icon">📋</span>
+            Apelaciones
+            <span class="badge-pending" id="apelacionesBadge" style="display: none;">0</span>
+        </button>
     </nav>
 
     <!-- Main Content -->
@@ -357,6 +362,39 @@
                     <span id="infoPaginacionIntentos" style="margin: 0 1rem;"></span>
                     <button id="btnSiguienteIntentos" class="btn-secondary">Siguiente →</button>
                 </div>
+            </div>
+        </section>
+
+        <!-- Apelaciones Tab -->
+        <section id="apelaciones" class="admin-section">
+            <div class="section-header">
+                <h2>📋 Apelaciones de Bans</h2>
+                <p style="color: #666; margin-top: 0.5rem;">Revisa y gestiona las apelaciones de usuarios baneados.</p>
+            </div>
+            
+            <!-- Filtros -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Estado</label>
+                        <select id="filterEstadoApelacion" style="padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            <option value="">Todas</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="aprobada">Aprobadas</option>
+                            <option value="rechazada">Rechazadas</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button id="btnCargarApelaciones" class="btn-primary" onclick="loadApelaciones()" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                            🔍 Cargar Apelaciones
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de Apelaciones -->
+            <div id="apelacionesList" style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <p style="text-align: center; color: #999; padding: 2rem;">Haz clic en "Cargar Apelaciones" para ver las apelaciones pendientes.</p>
             </div>
         </section>
     </main>

@@ -209,6 +209,22 @@ try {
             handleEliminarBan($conn, $input, $method);
             break;
             
+        case 'crear_apelacion':
+            handleCrearApelacion($conn, $input, $method);
+            break;
+            
+        case 'listar_apelaciones':
+            handleListarApelaciones($conn, $input, $method);
+            break;
+            
+        case 'resolver_apelacion':
+            handleResolverApelacion($conn, $input, $method);
+            break;
+            
+        case 'get_user_by_email':
+            handleGetUserByEmail($conn, $input, $method);
+            break;
+            
         case 'get_usuario_info':
             handleGetUsuarioInfo($conn, $input, $method);
             break;
@@ -529,14 +545,38 @@ function handleLogin($conn, $input, $method) {
         $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
         
         if ($ban) {
+            // Verificar si ya tiene una apelación pendiente o si ya fue desbaneado una vez
+            $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE ban_id = ? AND estado = 'pendiente'");
+            $stmt->execute([$ban['id']]);
+            $tieneApelacionPendiente = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+            
+            $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
+            $stmt->execute([$user['id']]);
+            $yaDesbaneadoUnaVez = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+            
+            $mensajeBan = '';
             if ($ban['tipo'] === 'permanente') {
-                echo json_encode(['success' => false, 'message' => 'Tu cuenta está permanentemente baneada. Motivo: ' . $ban['motivo']]);
-                return;
+                $mensajeBan = 'Tu cuenta está permanentemente baneada. Motivo: ' . $ban['motivo'];
             } else {
                 $fechaFin = date('d/m/Y H:i', strtotime($ban['fecha_fin']));
-                echo json_encode(['success' => false, 'message' => 'Tu cuenta está temporalmente baneada hasta ' . $fechaFin . '. Motivo: ' . $ban['motivo']]);
-                return;
+                $mensajeBan = 'Tu cuenta está temporalmente baneada hasta ' . $fechaFin . '. Motivo: ' . $ban['motivo'];
             }
+            
+            if (!$yaDesbaneadoUnaVez && !$tieneApelacionPendiente) {
+                $mensajeBan .= ' | Puedes apelar este ban una vez.';
+            } elseif ($tieneApelacionPendiente) {
+                $mensajeBan .= ' | Tienes una apelación pendiente de revisión.';
+            } elseif ($yaDesbaneadoUnaVez) {
+                $mensajeBan .= ' | Ya fuiste desbaneado una vez, no puedes apelar nuevamente.';
+            }
+            
+            echo json_encode([
+                'success' => false, 
+                'message' => $mensajeBan,
+                'ban_id' => $ban['id'],
+                'puede_apelar' => !$yaDesbaneadoUnaVez && !$tieneApelacionPendiente
+            ]);
+            return;
         }
     } catch (Exception $e) {
         // Si la tabla no existe, continuar
@@ -1143,19 +1183,14 @@ function handleDeleteRecord($conn, $input, $method) {
         error_log("⚠️ [handleDeleteRecord] Token vacío o no recibido");
     }
     
-    // Si no es admin, verificar que el usuario esté autenticado y tenga permiso
+    // SOLO ADMINISTRADORES pueden eliminar registros
     if (!$admin) {
-        error_log("⚠️ [handleDeleteRecord] No hay admin verificado");
-        if (empty($usuarioId)) {
-            error_log("❌ [handleDeleteRecord] No hay admin ni usuarioId - Usuario no autenticado");
-            echo json_encode(['success' => false, 'message' => 'Usuario no autenticado']);
-            return;
-        }
-        
-        $usuarioId = (int)$usuarioId;
-    } else {
-        error_log("✅ [handleDeleteRecord] Admin verificado correctamente");
+        error_log("❌ [handleDeleteRecord] Intento de eliminación por usuario no administrador");
+        echo json_encode(['success' => false, 'message' => 'Solo los administradores pueden eliminar registros']);
+        return;
     }
+    
+    error_log("✅ [handleDeleteRecord] Admin verificado correctamente");
     
     // Verificar que el registro existe
     $stmt = $conn->prepare("SELECT id, usuario_id FROM registros_animales WHERE id = ?");
@@ -1165,15 +1200,6 @@ function handleDeleteRecord($conn, $input, $method) {
     if (!$record) {
         echo json_encode(['success' => false, 'message' => 'Registro no encontrado']);
         return;
-    }
-    
-    // Si no es admin, verificar que el registro pertenece al usuario
-    if (!$admin) {
-        $existingUserId = (int)$record['usuario_id'];
-        if ($existingUserId !== $usuarioId) {
-            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar este registro']);
-            return;
-        }
     }
     
     // Iniciar transacción para asegurar que todo se elimine correctamente
@@ -2235,6 +2261,10 @@ function handleDarAdvertencia($conn, $input, $method) {
             
             // Si ya tiene 2 bans temporales, aplicar ban permanente
             if ($bansTemporalesPrevios >= 2) {
+                // Desactivar todos los bans permanentes anteriores antes de crear uno nuevo
+                $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'permanente' AND activo = TRUE");
+                $stmt->execute([$usuarioId]);
+                
                 $motivoBan = "Ban permanente automático: 3 advertencias y 3 bans temporales previos";
                 $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo) VALUES (?, ?, 'permanente', ?)");
                 $stmt->execute([$usuarioId, $admin['id'], $motivoBan]);
@@ -2367,6 +2397,12 @@ function handleDarBan($conn, $input, $method) {
             }
         }
         
+        // Si es ban permanente, desactivar todos los bans permanentes anteriores
+        if ($tipo === 'permanente') {
+            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'permanente' AND activo = TRUE");
+            $stmt->execute([$usuarioId]);
+        }
+        
         $fechaFin = null;
         if ($tipo === 'temporal') {
             $fechaFin = date('Y-m-d H:i:s', strtotime("+$dias days"));
@@ -2404,6 +2440,7 @@ function handleListarBans($conn, $input, $method) {
     try {
         if ($usuarioId) {
             if ($soloActivos) {
+                // Para bans activos, mostrar solo el ban permanente más reciente si hay múltiples
                 $stmt = $conn->prepare("
                     SELECT b.*, u.nombre as usuario_nombre, u.email as usuario_email,
                            admin.nombre as admin_nombre
@@ -2411,7 +2448,7 @@ function handleListarBans($conn, $input, $method) {
                     INNER JOIN usuarios u ON b.usuario_id = u.id
                     LEFT JOIN usuarios_administradores admin ON b.admin_id = admin.id
                     WHERE b.usuario_id = ? AND b.activo = TRUE AND (b.tipo = 'permanente' OR b.fecha_fin > NOW())
-                    ORDER BY b.fecha_inicio DESC
+                    ORDER BY b.tipo DESC, b.fecha_inicio DESC
                 ");
             } else {
                 $stmt = $conn->prepare("
@@ -2522,6 +2559,264 @@ function handleEliminarBan($conn, $input, $method) {
         echo json_encode([
             'success' => true,
             'message' => 'Ban eliminado exitosamente'
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+// ==================== SISTEMA DE APELACIONES ====================
+
+function handleCrearApelacion($conn, $input, $method) {
+    if ($method !== 'POST') {
+        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        return;
+    }
+    
+    $banId = $input['ban_id'] ?? null;
+    $motivoApelacion = trim($input['motivo_apelacion'] ?? '');
+    $usuarioId = $input['usuario_id'] ?? null;
+    
+    if (empty($banId) || empty($motivoApelacion) || empty($usuarioId)) {
+        echo json_encode(['success' => false, 'message' => 'Datos incompletos']);
+        return;
+    }
+    
+    if (strlen($motivoApelacion) < 20) {
+        echo json_encode(['success' => false, 'message' => 'El motivo de la apelación debe tener al menos 20 caracteres']);
+        return;
+    }
+    
+    try {
+        // Crear tabla de apelaciones si no existe
+        $createTable = "
+        CREATE TABLE IF NOT EXISTS apelaciones_bans (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            ban_id INT NOT NULL,
+            usuario_id INT NOT NULL,
+            motivo_apelacion TEXT NOT NULL,
+            estado ENUM('pendiente', 'aprobada', 'rechazada') DEFAULT 'pendiente',
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fecha_resolucion DATETIME NULL,
+            admin_id_resolucion INT NULL,
+            desbaneado_una_vez BOOLEAN DEFAULT FALSE,
+            INDEX idx_ban (ban_id),
+            INDEX idx_usuario (usuario_id),
+            INDEX idx_estado (estado)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ";
+        $conn->exec($createTable);
+        
+        // Verificar que el ban existe y pertenece al usuario
+        $stmt = $conn->prepare("SELECT id, usuario_id, activo FROM bans_usuarios WHERE id = ? AND usuario_id = ?");
+        $stmt->execute([$banId, $usuarioId]);
+        $ban = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$ban) {
+            echo json_encode(['success' => false, 'message' => 'Ban no encontrado o no pertenece al usuario']);
+            return;
+        }
+        
+        if (!$ban['activo']) {
+            echo json_encode(['success' => false, 'message' => 'Este ban ya fue eliminado']);
+            return;
+        }
+        
+        // Verificar si ya existe una apelación pendiente para este ban
+        $stmt = $conn->prepare("SELECT id FROM apelaciones_bans WHERE ban_id = ? AND estado = 'pendiente'");
+        $stmt->execute([$banId]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'Ya existe una apelación pendiente para este ban']);
+            return;
+        }
+        
+        // Verificar si el usuario ya fue desbaneado una vez
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
+        $stmt->execute([$usuarioId]);
+        $yaDesbaneado = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+        
+        if ($yaDesbaneado) {
+            echo json_encode(['success' => false, 'message' => 'Ya has sido desbaneado una vez. No puedes apelar nuevamente']);
+            return;
+        }
+        
+        // Crear la apelación
+        $stmt = $conn->prepare("INSERT INTO apelaciones_bans (ban_id, usuario_id, motivo_apelacion) VALUES (?, ?, ?)");
+        $stmt->execute([$banId, $usuarioId, $motivoApelacion]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Apelación creada exitosamente. Será revisada por un administrador.'
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+function handleListarApelaciones($conn, $input, $method) {
+    $token = $input['token'] ?? $_GET['token'] ?? '';
+    $estado = $input['estado'] ?? $_GET['estado'] ?? null;
+    
+    // Verificar si es admin o usuario normal
+    $admin = verifyAdminToken($conn, $token);
+    $usuarioId = null;
+    
+    if (!$admin) {
+        // Si no es admin, verificar usuario normal
+        $user = verifyUserToken($conn, $token);
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'No autorizado']);
+            return;
+        }
+        $usuarioId = $user['id'];
+    }
+    
+    try {
+        if ($admin) {
+            // Admin puede ver todas las apelaciones
+            $query = "
+                SELECT a.*, 
+                       u.nombre as usuario_nombre, 
+                       u.email as usuario_email,
+                       b.tipo as ban_tipo,
+                       b.motivo as ban_motivo,
+                       admin_resolucion.nombre as admin_resolucion_nombre
+                FROM apelaciones_bans a
+                INNER JOIN usuarios u ON a.usuario_id = u.id
+                INNER JOIN bans_usuarios b ON a.ban_id = b.id
+                LEFT JOIN usuarios_administradores admin_resolucion ON a.admin_id_resolucion = admin_resolucion.id
+            ";
+            
+            $params = [];
+            if ($estado) {
+                $query .= " WHERE a.estado = ?";
+                $params[] = $estado;
+            }
+            
+            $query .= " ORDER BY a.fecha_creacion DESC";
+            
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+        } else {
+            // Usuario normal solo puede ver sus propias apelaciones
+            $query = "
+                SELECT a.*, 
+                       b.tipo as ban_tipo,
+                       b.motivo as ban_motivo
+                FROM apelaciones_bans a
+                INNER JOIN bans_usuarios b ON a.ban_id = b.id
+                WHERE a.usuario_id = ?
+                ORDER BY a.fecha_creacion DESC
+            ";
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$usuarioId]);
+        }
+        
+        $apelaciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'apelaciones' => $apelaciones
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+function handleResolverApelacion($conn, $input, $method) {
+    if ($method !== 'POST') {
+        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        return;
+    }
+    
+    $token = $input['token'] ?? '';
+    $apelacionId = $input['apelacion_id'] ?? null;
+    $accion = $input['accion'] ?? null; // 'aprobar' o 'rechazar'
+    $comentarioAdmin = trim($input['comentario_admin'] ?? '');
+    
+    $admin = verifyAdminToken($conn, $token);
+    if (!$admin) {
+        echo json_encode(['success' => false, 'message' => 'No autorizado']);
+        return;
+    }
+    
+    if (empty($apelacionId) || !in_array($accion, ['aprobar', 'rechazar'])) {
+        echo json_encode(['success' => false, 'message' => 'Datos inválidos']);
+        return;
+    }
+    
+    try {
+        // Obtener la apelación
+        $stmt = $conn->prepare("SELECT * FROM apelaciones_bans WHERE id = ?");
+        $stmt->execute([$apelacionId]);
+        $apelacion = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$apelacion) {
+            echo json_encode(['success' => false, 'message' => 'Apelación no encontrada']);
+            return;
+        }
+        
+        if ($apelacion['estado'] !== 'pendiente') {
+            echo json_encode(['success' => false, 'message' => 'Esta apelación ya fue resuelta']);
+            return;
+        }
+        
+        $nuevoEstado = $accion === 'aprobar' ? 'aprobada' : 'rechazada';
+        $desbaneadoUnaVez = false;
+        
+        if ($accion === 'aprobar') {
+            // Verificar si ya fue desbaneado una vez
+            $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
+            $stmt->execute([$apelacion['usuario_id']]);
+            $yaDesbaneado = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+            
+            if ($yaDesbaneado) {
+                echo json_encode(['success' => false, 'message' => 'Este usuario ya fue desbaneado una vez. No se puede desbanear nuevamente']);
+                return;
+            }
+            
+            // Desbanear al usuario
+            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE id = ?");
+            $stmt->execute([$apelacion['ban_id']]);
+            
+            $desbaneadoUnaVez = true;
+        }
+        
+        // Actualizar la apelación
+        $stmt = $conn->prepare("UPDATE apelaciones_bans SET estado = ?, fecha_resolucion = NOW(), admin_id_resolucion = ?, desbaneado_una_vez = ? WHERE id = ?");
+        $stmt->execute([$nuevoEstado, $admin['id'], $desbaneadoUnaVez ? 1 : 0, $apelacionId]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => $accion === 'aprobar' ? 'Apelación aprobada y usuario desbaneado' : 'Apelación rechazada',
+            'desbaneado' => $desbaneadoUnaVez
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+function handleGetUserByEmail($conn, $input, $method) {
+    $email = $input['email'] ?? $_GET['email'] ?? '';
+    
+    if (empty($email)) {
+        echo json_encode(['success' => false, 'message' => 'Email requerido']);
+        return;
+    }
+    
+    try {
+        $stmt = $conn->prepare("SELECT id, nombre, email FROM usuarios WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
+            return;
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'user' => $user
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);

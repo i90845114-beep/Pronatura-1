@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apelar Ban - Contraloría Social Tamaulipas</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <style>
+        .apelacion-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4D8143 30%, #ffffff 70%);
+            padding: 2rem;
+        }
+        
+        .apelacion-box {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .apelacion-title {
+            font-size: 1.8rem;
+            color: #2c7a7b;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .apelacion-info {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 150px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4D8143;
+        }
+        
+        .char-count {
+            font-size: 0.85rem;
+            color: #666;
+            text-align: right;
+            margin-top: 0.25rem;
+        }
+        
+        .btn-submit {
+            width: 100%;
+            padding: 0.75rem;
+            background: #4D8143;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-submit:hover {
+            background: #3d6a35;
+            transform: translateY(-2px);
+        }
+        
+        .btn-submit:disabled {
+            background: #9e9e9e;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        .btn-back {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="apelacion-container">
+        <div class="apelacion-box">
+            <h1 class="apelacion-title">📝 Apelar Ban</h1>
+            
+            <div class="apelacion-info">
+                <strong>⚠️ Información importante:</strong>
+                <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                    <li>Solo puedes apelar una vez por ban</li>
+                    <li>Tu apelación será revisada por un administrador</li>
+                    <li>Si es aprobada, serás desbaneado una última vez</li>
+                    <li>El motivo de la apelación debe tener al menos 20 caracteres</li>
+                </ul>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+            
+            <form id="apelacionForm">
+                <div class="form-group">
+                    <label for="motivoApelacion">Motivo de la apelación:</label>
+                    <textarea id="motivoApelacion" placeholder="Explica por qué crees que el ban debería ser removido. Sé específico y respetuoso." required minlength="20"></textarea>
+                    <div class="char-count">
+                        <span id="charCount">0</span> / mínimo 20 caracteres
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-submit" id="submitBtn">Enviar Apelación</button>
+            </form>
+            
+            <a href="login.html" class="btn-back">← Volver al inicio de sesión</a>
+        </div>
+    </div>
+    
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        // Obtener ban_id del sessionStorage
+        const banId = sessionStorage.getItem('ban_id_apelar');
+        const email = sessionStorage.getItem('email_apelar');
+        
+        if (!banId) {
+            document.getElementById('errorMessage').textContent = 'No se encontró información del ban. Por favor, intenta iniciar sesión nuevamente.';
+            document.getElementById('errorMessage').classList.add('show');
+            document.getElementById('apelacionForm').style.display = 'none';
+        }
+        
+        // Contador de caracteres
+        const motivoTextarea = document.getElementById('motivoApelacion');
+        const charCount = document.getElementById('charCount');
+        
+        motivoTextarea.addEventListener('input', function() {
+            const count = this.value.length;
+            charCount.textContent = count;
+            if (count < 20) {
+                charCount.style.color = '#c33';
+            } else {
+                charCount.style.color = '#3c3';
+            }
+        });
+        
+        // Manejar envío del formulario
+        document.getElementById('apelacionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const motivoApelacion = motivoTextarea.value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            errorDiv.classList.remove('show');
+            successDiv.classList.remove('show');
+            
+            if (motivoApelacion.length < 20) {
+                errorDiv.textContent = 'El motivo debe tener al menos 20 caracteres';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            // Obtener usuario_id del email mediante una consulta al servidor
+            let usuarioId = null;
+            try {
+                // Intentar obtener el usuario desde auth.js si está disponible
+                if (window.authSystem) {
+                    const currentUser = window.authSystem.getCurrentUser();
+                    if (currentUser && currentUser.email === email) {
+                        usuarioId = currentUser.id;
+                    }
+                }
+                
+                // Si no hay usuario en sesión, obtenerlo del servidor usando el email
+                if (!usuarioId && email) {
+                    const userResponse = await fetch(`../api/api.php?action=get_user_by_email&email=${encodeURIComponent(email)}`);
+                    const userData = await userResponse.json();
+                    if (userData.success && userData.user) {
+                        usuarioId = userData.user.id;
+                    }
+                }
+                
+                if (!usuarioId) {
+                    errorDiv.textContent = 'No se pudo verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
+                    errorDiv.classList.add('show');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error al obtener usuario:', error);
+                errorDiv.textContent = 'Error al verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
+            
+            try {
+                const response = await fetch('../api/api.php?action=crear_apelacion', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ban_id: banId,
+                        usuario_id: usuarioId,
+                        motivo_apelacion: motivoApelacion
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    successDiv.textContent = data.message;
+                    successDiv.classList.add('show');
+                    motivoTextarea.disabled = true;
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Apelación Enviada';
+                    
+                    // Limpiar sessionStorage
+                    sessionStorage.removeItem('ban_id_apelar');
+                    sessionStorage.removeItem('email_apelar');
+                    
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                } else {
+                    errorDiv.textContent = data.message || 'Error al enviar la apelación';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Enviar Apelación';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Apelación';
+            }
+        });
+    </script>
+</body>
+</html>
+

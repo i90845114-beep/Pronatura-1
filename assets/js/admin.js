@@ -9,6 +9,30 @@ let intentosOfensivos = [];
 let paginaIntentos = 0;
 const limiteIntentos = 20;
 
+// Funciones auxiliares
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return dateString;
+    }
+}
+
 // Función para cargar intentos ofensivos - DEFINIR AL INICIO DEL ARCHIVO
 window.loadIntentosOfensivos = async function loadIntentosOfensivos() {
     console.log('🔍 [Intentos Ofensivos] ========== INICIANDO CARGA ==========');
@@ -248,6 +272,9 @@ function setupTabNavigation() {
                         break;
                     case 'intentos-ofensivos':
                         loadIntentosOfensivos();
+                        break;
+                    case 'apelaciones':
+                        loadApelaciones();
                         break;
                 }
             }
@@ -1928,8 +1955,21 @@ async function showUsuarioSanciones(usuarioId) {
         const bansData = await bansResponse.json();
         
         if (bansData.success) {
-            const bansHtml = bansData.bans.length > 0 ?
-                bansData.bans.map(ban => {
+            // Filtrar para mostrar solo un ban permanente activo (el más reciente)
+            let bansFiltrados = bansData.bans;
+            const bansPermanentesActivos = bansData.bans.filter(b => b.activo && b.tipo === 'permanente');
+            if (bansPermanentesActivos.length > 1) {
+                // Si hay múltiples bans permanentes activos, mostrar solo el más reciente
+                const banPermanenteMasReciente = bansPermanentesActivos.sort((a, b) => 
+                    new Date(b.fecha_inicio) - new Date(a.fecha_inicio)
+                )[0];
+                bansFiltrados = bansData.bans.filter(b => 
+                    !(b.activo && b.tipo === 'permanente') || b.id === banPermanenteMasReciente.id
+                );
+            }
+            
+            const bansHtml = bansFiltrados.length > 0 ?
+                bansFiltrados.map(ban => {
                     const fechaFin = ban.fecha_fin ? formatDate(ban.fecha_fin) : 'Permanente';
                     const isActive = ban.activo && (ban.tipo === 'permanente' || (ban.fecha_fin && new Date(ban.fecha_fin) > new Date()));
                     return `
@@ -1945,7 +1985,7 @@ async function showUsuarioSanciones(usuarioId) {
                                 Fin: ${fechaFin}
                                 ${ban.activo ? '' : ' <span style="color: #999;">(Eliminado)</span>'}
                             </div>
-                            ${ban.activo && isActive ? `<button onclick="eliminarBan(${ban.id})" style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; background: #d32f2f; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Eliminar</button>` : ''}
+                            ${ban.activo && isActive ? `<button onclick="eliminarBan(${ban.id})" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Desbanear</button>` : ''}
                         </div>
                     `;
                 }).join('') :
@@ -2028,6 +2068,151 @@ async function eliminarBan(banId) {
                     showUsuarioSanciones(parseInt(usuarioId));
                 }
             }
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    }
+}
+
+// ==================== SISTEMA DE APELACIONES ====================
+
+async function loadApelaciones() {
+    const apelacionesList = document.getElementById('apelacionesList');
+    if (!apelacionesList) return;
+    
+    const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    if (!token) {
+        apelacionesList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: No autenticado</p>';
+        return;
+    }
+    
+    apelacionesList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Cargando apelaciones...</p>';
+    
+    try {
+        const estado = document.getElementById('filterEstadoApelacion')?.value || '';
+        let url = `../api/api.php?action=listar_apelaciones&token=${token}`;
+        if (estado) url += `&estado=${estado}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            const apelaciones = data.apelaciones || [];
+            
+            // Actualizar badge de apelaciones pendientes
+            const pendientes = apelaciones.filter(a => a.estado === 'pendiente').length;
+            const badge = document.getElementById('apelacionesBadge');
+            if (badge) {
+                if (pendientes > 0) {
+                    badge.textContent = pendientes;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            
+            if (apelaciones.length === 0) {
+                apelacionesList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No hay apelaciones' + (estado ? ` con estado "${estado}"` : '') + '.</p>';
+                return;
+            }
+            
+            const apelacionesHtml = apelaciones.map(apelacion => {
+                const estadoBadge = {
+                    'pendiente': '<span style="background: #ff9800; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">Pendiente</span>',
+                    'aprobada': '<span style="background: #4caf50; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">Aprobada</span>',
+                    'rechazada': '<span style="background: #d32f2f; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">Rechazada</span>'
+                }[apelacion.estado] || '';
+                
+                const banTipo = apelacion.ban_tipo === 'permanente' ? '🚫 Ban Permanente' : '⏰ Ban Temporal';
+                const fechaCreacion = formatDate(apelacion.fecha_creacion);
+                const fechaResolucion = apelacion.fecha_resolucion ? formatDate(apelacion.fecha_resolucion) : 'N/A';
+                const adminResolucion = apelacion.admin_resolucion_nombre || 'N/A';
+                
+                return `
+                    <div style="background: ${apelacion.estado === 'pendiente' ? '#fff9e6' : apelacion.estado === 'aprobada' ? '#e8f5e9' : '#ffebee'}; border-left: 4px solid ${apelacion.estado === 'pendiente' ? '#ff9800' : apelacion.estado === 'aprobada' ? '#4caf50' : '#d32f2f'}; padding: 1.5rem; margin-bottom: 1rem; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="margin: 0 0 0.5rem 0; color: #333;">${escapeHtml(apelacion.usuario_nombre || 'Usuario')}</h3>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">${escapeHtml(apelacion.usuario_email || '')}</p>
+                            </div>
+                            ${estadoBadge}
+                        </div>
+                        
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Ban:</strong> ${banTipo}<br>
+                            <strong>Motivo del ban:</strong> ${escapeHtml(apelacion.ban_motivo || 'N/A')}
+                        </div>
+                        
+                        <div style="background: white; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <strong>Motivo de la apelación:</strong>
+                            <p style="margin: 0.5rem 0 0 0; color: #333; line-height: 1.6;">${escapeHtml(apelacion.motivo_apelacion)}</p>
+                        </div>
+                        
+                        <div style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">
+                            <strong>Fecha de creación:</strong> ${fechaCreacion}<br>
+                            ${apelacion.estado !== 'pendiente' ? `
+                                <strong>Fecha de resolución:</strong> ${fechaResolucion}<br>
+                                <strong>Resuelto por:</strong> ${escapeHtml(adminResolucion)}
+                            ` : ''}
+                        </div>
+                        
+                        ${apelacion.estado === 'pendiente' ? `
+                            <div style="display: flex; gap: 1rem;">
+                                <button onclick="resolverApelacion(${apelacion.id}, 'aprobar')" style="padding: 0.75rem 1.5rem; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    ✅ Aprobar y Desbanear
+                                </button>
+                                <button onclick="resolverApelacion(${apelacion.id}, 'rechazar')" style="padding: 0.75rem 1.5rem; background: #d32f2f; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    ❌ Rechazar
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            apelacionesList.innerHTML = apelacionesHtml;
+        } else {
+            apelacionesList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${data.message}</p>`;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        apelacionesList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error de conexión</p>';
+    }
+}
+
+async function resolverApelacion(apelacionId, accion) {
+    const mensaje = accion === 'aprobar' 
+        ? '¿Estás seguro de aprobar esta apelación y desbanear al usuario? Esta será su última oportunidad.'
+        : '¿Estás seguro de rechazar esta apelación?';
+    
+    if (!confirm(mensaje)) return;
+    
+    const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    if (!token) {
+        alert('No estás autenticado');
+        return;
+    }
+    
+    try {
+        const response = await fetch('../api/api.php?action=resolver_apelacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                token, 
+                apelacion_id: apelacionId,
+                accion: accion
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            loadApelaciones();
+            loadUsuarios(); // Recargar usuarios para actualizar estados
         } else {
             alert('Error: ' + data.message);
         }

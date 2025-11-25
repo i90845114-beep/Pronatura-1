@@ -473,13 +473,34 @@
                     }
 
                 } else {
-
+                    // Verificar si el error es por ban y si puede apelar
+                    const banId = result.ban_id;
+                    const puedeApelar = result.puede_apelar === true;
+                    
                     errorDiv.textContent = result.message || 'Correo o contraseña incorrectos';
-
                     errorDiv.classList.add('show');
+                    
+                    // Si hay ban y puede apelar, mostrar botón de apelar
+                    if (banId && puedeApelar) {
+                        const apelarBtn = document.createElement('button');
+                        apelarBtn.type = 'button';
+                        apelarBtn.className = 'btn-apelar';
+                        apelarBtn.textContent = 'Apelar Ban';
+                        apelarBtn.style.cssText = 'margin-top: 1rem; padding: 0.75rem 1.5rem; background: #4caf50; color: white; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600;';
+                        apelarBtn.onclick = () => {
+                            sessionStorage.setItem('ban_id_apelar', banId);
+                            sessionStorage.setItem('email_apelar', email);
+                            window.location.href = 'apelar-ban.html';
+                        };
+                        
+                        // Remover botón anterior si existe
+                        const btnAnterior = errorDiv.parentElement.querySelector('.btn-apelar');
+                        if (btnAnterior) btnAnterior.remove();
+                        
+                        errorDiv.parentElement.appendChild(apelarBtn);
+                    }
 
                     submitBtn.disabled = false;
-
                     submitBtn.textContent = 'Iniciar Sesión';
 
                 }
