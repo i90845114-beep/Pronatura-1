@@ -14,6 +14,8 @@
     "sync": "npx cap sync",
     "sync:android": "npx cap sync android",
     "open:android": "npx cap open android",
+    "sync:ios": "npx cap sync ios",
+    "open:ios": "npx cap open ios",
     "copy:www": "powershell -Command \"Copy-Item -Path pages,assets,api,manifest.json,sw.js,index.html,index.php -Destination www -Recurse -Force\""
   },
   "keywords": [
@@ -26,6 +28,7 @@
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
-    "@capacitor/core": "^7.4.4"
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/ios": "^7.5.0"
   }
 }
