@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/db_connection.php';
 require_once __DIR__ . '/admin_functions.php';
+require_once __DIR__ . '/grupos_functions.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -8,7 +9,6 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
@@ -32,6 +32,9 @@ if (!is_array($input)) {
     $input = [];
 }
 
+// Obtener la acción de GET, POST o del body JSON
+$action = $_GET['action'] ?? $_POST['action'] ?? ($input['action'] ?? '');
+
 // Función para asegurar que las columnas nombre_real y apodo existan
 function ensureUsuarioColumns($conn) {
     try {
@@ -52,9 +55,84 @@ function ensureUsuarioColumns($conn) {
             // Copiar datos de nombre a apodo para usuarios existentes (retrocompatibilidad)
             $conn->exec("UPDATE usuarios SET apodo = nombre WHERE apodo IS NULL OR apodo = ''");
         }
+        
+        // Verificar si existe la columna 'ip_address' en usuarios
+        $checkIp = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'ip_address'");
+        if ($checkIp->rowCount() === 0) {
+            // Agregar columna ip_address después de fecha_registro
+            $conn->exec("ALTER TABLE usuarios ADD COLUMN ip_address VARCHAR(45) NULL AFTER fecha_registro");
+        }
     } catch (PDOException $e) {
         // Si hay error, solo loguear pero no fallar (para no romper la aplicación)
         error_log("Error al crear columnas de usuario: " . $e->getMessage());
+    }
+}
+
+// Función para asegurar que las columnas IP, nombre_usuario y apodo_usuario existan en bans_usuarios
+function ensureBansColumns($conn) {
+    try {
+        // Primero asegurar que la tabla bans_usuarios existe
+        $checkTable = $conn->query("SHOW TABLES LIKE 'bans_usuarios'");
+        if ($checkTable->rowCount() === 0) {
+            // Crear tabla si no existe
+            $createBansTable = "
+            CREATE TABLE IF NOT EXISTS bans_usuarios (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                usuario_id INT NOT NULL,
+                admin_id INT NOT NULL,
+                tipo ENUM('temporal', 'permanente') NOT NULL DEFAULT 'temporal',
+                motivo TEXT NOT NULL,
+                fecha_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                fecha_fin DATETIME NULL,
+                activo BOOLEAN DEFAULT TRUE,
+                INDEX idx_usuario (usuario_id),
+                INDEX idx_admin (admin_id),
+                INDEX idx_tipo (tipo),
+                INDEX idx_activo (activo),
+                INDEX idx_fecha_fin (fecha_fin)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ";
+            $conn->exec($createBansTable);
+        }
+        
+        // Verificar si existe la columna 'ip_address' en bans_usuarios
+        $checkIp = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'ip_address'");
+        if ($checkIp->rowCount() === 0) {
+            $conn->exec("ALTER TABLE bans_usuarios ADD COLUMN ip_address VARCHAR(45) NULL AFTER activo");
+            // Intentar agregar índice si no existe
+            try {
+                $conn->exec("ALTER TABLE bans_usuarios ADD INDEX idx_ip (ip_address)");
+            } catch (Exception $e) {
+                // Índice puede ya existir, continuar
+            }
+        }
+        
+        // Verificar si existe la columna 'nombre_usuario' en bans_usuarios
+        $checkNombre = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'nombre_usuario'");
+        if ($checkNombre->rowCount() === 0) {
+            $conn->exec("ALTER TABLE bans_usuarios ADD COLUMN nombre_usuario VARCHAR(255) NULL AFTER ip_address");
+            // Intentar agregar índice si no existe
+            try {
+                $conn->exec("ALTER TABLE bans_usuarios ADD INDEX idx_nombre (nombre_usuario)");
+            } catch (Exception $e) {
+                // Índice puede ya existir, continuar
+            }
+        }
+        
+        // Verificar si existe la columna 'apodo_usuario' en bans_usuarios
+        $checkApodo = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'apodo_usuario'");
+        if ($checkApodo->rowCount() === 0) {
+            $conn->exec("ALTER TABLE bans_usuarios ADD COLUMN apodo_usuario VARCHAR(255) NULL AFTER nombre_usuario");
+            // Intentar agregar índice si no existe
+            try {
+                $conn->exec("ALTER TABLE bans_usuarios ADD INDEX idx_apodo (apodo_usuario)");
+            } catch (Exception $e) {
+                // Índice puede ya existir, continuar
+            }
+        }
+    } catch (PDOException $e) {
+        // Si hay error, solo loguear pero no fallar (para no romper la aplicación)
+        error_log("Error al crear columnas de bans: " . $e->getMessage());
     }
 }
 
@@ -141,6 +219,10 @@ try {
             handleDeleteUsuario($conn, $input, $method);
             break;
             
+        case 'limpiar_usuarios':
+            handleLimpiarUsuarios($conn, $input, $method);
+            break;
+            
         case 'request_password_reset':
             handleRequestPasswordReset($conn, $input, $method);
             break;
@@ -225,12 +307,224 @@ try {
             handleGetUserByEmail($conn, $input, $method);
             break;
             
+        case 'check_ban_status':
+            handleCheckBanStatus($conn, $input, $method);
+            break;
+            
         case 'get_usuario_info':
             handleGetUsuarioInfo($conn, $input, $method);
             break;
             
         case 'get_intentos_ofensivos':
             handleGetIntentosOfensivos($conn, $_GET);
+            break;
+            
+        // Endpoints de grupos de ejidos
+        case 'create_grupo':
+            handleCreateGrupo($conn, $input, $method);
+            break;
+            
+        case 'get_grupos':
+            handleGetGrupos($conn, $_GET);
+            break;
+            
+        case 'unirse_grupo':
+            handleUnirseGrupo($conn, $input, $method);
+            break;
+            
+        case 'get_miembros_grupo':
+            handleGetMiembrosGrupo($conn, $_GET);
+            break;
+            
+        case 'salir_grupo':
+            handleSalirGrupo($conn, $input, $method);
+            break;
+            
+        case 'update_grupo':
+            handleUpdateGrupo($conn, $input, $method);
+            break;
+            
+        case 'delete_grupo':
+            handleDeleteGrupo($conn, $input, $method);
+            break;
+        case 'delete_grupos_predeterminados':
+            if ((empty($input['admin_id']) || (int)$input['admin_id'] <= 0) && !empty($input['token'])) {
+                $admin = verifyAdminToken($conn, $input['token']);
+                if ($admin) {
+                    $input['admin_id'] = (int)$admin['id'];
+                }
+            }
+            handleDeleteGruposPredeterminados($conn, $input, $method);
+            break;
+        case 'delete_all_grupos':
+            if ((empty($input['admin_id']) || (int)$input['admin_id'] <= 0) && !empty($input['token'])) {
+                $admin = verifyAdminToken($conn, $input['token']);
+                if ($admin) {
+                    $input['admin_id'] = (int)$admin['id'];
+                }
+            }
+            handleDeleteAllGrupos($conn, $input, $method);
+            break;
+            
+        case 'enviar_mensaje':
+            handleEnviarMensaje($conn, $input, $method);
+            break;
+            
+        case 'get_mensajes':
+            handleGetMensajes($conn, $_GET);
+            break;
+            
+        case 'get_or_create_grupo_by_location':
+            handleGetOrCreateGrupoByLocation($conn, $input, $method);
+            break;
+            
+        case 'crear_chat_prueba':
+            // Endpoint para crear chat de prueba en Tamaulipas, Ciudad Victoria
+            try {
+                ensureGruposTables($conn);
+                ensureMensajesTable($conn);
+                
+                // Verificar si ya existe
+                $stmt = $conn->prepare("SELECT * FROM grupos_ejidos WHERE estado = ? AND municipio = ? AND ciudad = ?");
+                $stmt->execute(['Tamaulipas', 'Ciudad Victoria', 'Ciudad Victoria']);
+                $grupoExistente = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($grupoExistente) {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'El grupo ya existe',
+                        'grupo' => $grupoExistente
+                    ]);
+                } else {
+                    // Crear el grupo
+                    $nombreGrupo = "Chat de Ejidos - Ciudad Victoria, Ciudad Victoria, Tamaulipas";
+                    $descripcion = "Grupo de chat para ejidos en Ciudad Victoria, Ciudad Victoria, Tamaulipas";
+                    
+                    $stmt = $conn->prepare("
+                        INSERT INTO grupos_ejidos (nombre, estado, municipio, ciudad, descripcion, lider_id, fecha_creacion)
+                        VALUES (?, ?, ?, ?, ?, NULL, NOW())
+                    ");
+                    
+                    $stmt->execute([
+                        $nombreGrupo,
+                        'Tamaulipas',
+                        'Ciudad Victoria',
+                        'Ciudad Victoria',
+                        $descripcion
+                    ]);
+                    
+                    $grupoId = $conn->lastInsertId();
+                    
+                    // Asegurar columnas para mensajes anónimos y permitir usuario_id NULL
+                    try {
+                        // Verificar si usuario_id permite NULL
+                        $checkUsuarioId = $conn->query("SHOW COLUMNS FROM mensajes_chat WHERE Field = 'usuario_id' AND Null = 'NO'");
+                        if ($checkUsuarioId->rowCount() > 0) {
+                            // Eliminar foreign key si existe
+                            try {
+                                $conn->exec("ALTER TABLE mensajes_chat DROP FOREIGN KEY mensajes_chat_ibfk_2");
+                            } catch (Exception $e) {
+                                // Intentar otros nombres posibles de foreign key
+                                try {
+                                    $conn->exec("ALTER TABLE mensajes_chat DROP FOREIGN KEY mensajes_chat_ibfk_1");
+                                } catch (Exception $e2) {
+                                    // Ignorar si no existe
+                                }
+                            }
+                            // Permitir NULL en usuario_id
+                            $conn->exec("ALTER TABLE mensajes_chat MODIFY COLUMN usuario_id INT NULL");
+                        }
+                        
+                        $checkColumn = $conn->query("SHOW COLUMNS FROM mensajes_chat LIKE 'usuario_nombre'");
+                        if ($checkColumn->rowCount() === 0) {
+                            $conn->exec("ALTER TABLE mensajes_chat ADD COLUMN usuario_nombre VARCHAR(255) NULL AFTER usuario_id");
+                        }
+                        
+                        $checkFechaEnvio = $conn->query("SHOW COLUMNS FROM mensajes_chat LIKE 'fecha_envio'");
+                        if ($checkFechaEnvio->rowCount() === 0) {
+                            $conn->exec("ALTER TABLE mensajes_chat ADD COLUMN fecha_envio DATETIME NULL AFTER mensaje");
+                        }
+                    } catch (Exception $e) {
+                        // Ignorar si ya existen o hay errores
+                        error_log("Error al modificar tabla mensajes_chat: " . $e->getMessage());
+                    }
+                    
+                    // Agregar mensajes de prueba
+                    $mensajesPrueba = [
+                        ['nombre' => 'Usuario Prueba 1', 'mensaje' => '¡Hola! Este es un mensaje de prueba para el chat de Ciudad Victoria.'],
+                        ['nombre' => 'Usuario Prueba 2', 'mensaje' => 'Bienvenidos al chat de ejidos de Tamaulipas.'],
+                        ['nombre' => 'Usuario Prueba 3', 'mensaje' => 'Espero que este chat funcione correctamente.']
+                    ];
+                    
+                    foreach ($mensajesPrueba as $msg) {
+                        try {
+                            $stmt = $conn->prepare("
+                                INSERT INTO mensajes_chat (grupo_id, usuario_id, usuario_nombre, mensaje, fecha_envio, fecha_creacion, activo)
+                                VALUES (?, NULL, ?, ?, NOW(), NOW(), TRUE)
+                            ");
+                            $stmt->execute([$grupoId, $msg['nombre'], $msg['mensaje']]);
+                        } catch (Exception $e) {
+                            error_log("Error al insertar mensaje de prueba: " . $e->getMessage());
+                        }
+                    }
+                    
+                    // Obtener el grupo creado
+                    $stmt = $conn->prepare("SELECT * FROM grupos_ejidos WHERE id = ?");
+                    $stmt->execute([$grupoId]);
+                    $grupo = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Chat de prueba creado exitosamente',
+                        'grupo' => $grupo,
+                        'mensajes_agregados' => count($mensajesPrueba)
+                    ]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            }
+            break;
+            
+        // Endpoints de solicitudes de acceso a grupos
+        case 'crear_solicitud_acceso':
+            handleCrearSolicitudAcceso($conn, $input, $method);
+            break;
+            
+        case 'get_solicitudes_acceso':
+            handleGetSolicitudesAcceso($conn, $_GET);
+            break;
+            
+        case 'gestionar_solicitud_acceso':
+            handleGestionarSolicitudAcceso($conn, $input, $method);
+            break;
+
+        case 'get_notificaciones_solicitudes_count':
+            $token = $input['token'] ?? $_GET['token'] ?? '';
+            $admin = verifyAdminToken($conn, $token);
+            if (!$admin) {
+                echo json_encode(['success' => false, 'message' => 'Sesión requerida', 'count' => 0]);
+                break;
+            }
+            handleGetNotificacionesSolicitudesCount($conn, $admin['id']);
+            break;
+
+        case 'marcar_notificaciones_solicitudes_leidas':
+            $token = $input['token'] ?? '';
+            $admin = verifyAdminToken($conn, $token);
+            if (!$admin) {
+                echo json_encode(['success' => false, 'message' => 'Sesión requerida']);
+                break;
+            }
+            $solicitudId = isset($input['solicitud_id']) ? $input['solicitud_id'] : null;
+            handleMarcarNotificacionesSolicitudesLeidas($conn, $admin['id'], $solicitudId);
+            break;
+
+        case 'get_estado_asignado':
+            handleGetEstadoAsignado($conn, $_GET);
+            break;
+
+        case 'enviar_mensaje_anonimo':
+            handleEnviarMensajeAnonimo($conn, $input, $method);
             break;
             
         default:
@@ -247,6 +541,10 @@ function handleRegister($conn, $input, $method) {
         echo json_encode(['success' => false, 'message' => 'Método no permitido']);
         return;
     }
+    
+    // Asegurar que las columnas necesarias existan ANTES de cualquier consulta
+    ensureUsuarioColumns($conn);
+    ensureBansColumns($conn);
     
     // Obtener nombre real y apodo por separado
     $nombre = trim($input['nombre'] ?? '');
@@ -370,14 +668,24 @@ function handleRegister($conn, $input, $method) {
         $checkNombreReal = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'nombre_real'");
         $nombreRealExists = $checkNombreReal->rowCount() > 0;
         
+        // Verificar si existe columna ip_address en usuarios y agregarla si no existe
+        try {
+            $checkIpColumn = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'ip_address'");
+            if ($checkIpColumn->rowCount() === 0) {
+                $conn->exec("ALTER TABLE usuarios ADD COLUMN ip_address VARCHAR(45) NULL AFTER fecha_registro");
+            }
+        } catch (Exception $e) {
+            // Continuar si hay error
+        }
+        
         if ($nombreRealExists) {
-            // Insertar con nombre_real y apodo separados
-            $stmt = $conn->prepare("INSERT INTO usuarios (nombre_real, nombre, apodo, email, password_hash, rol) VALUES (?, ?, ?, ?, ?, 'usuario')");
-            $stmt->execute([$nombre, $apodo, $apodo, $email, $passwordHash]);
+            // Insertar con nombre_real y apodo separados, incluyendo IP
+            $stmt = $conn->prepare("INSERT INTO usuarios (nombre_real, nombre, apodo, email, password_hash, rol, ip_address) VALUES (?, ?, ?, ?, ?, 'usuario', ?)");
+            $stmt->execute([$nombre, $apodo, $apodo, $email, $passwordHash, $ipAddress]);
         } else {
             // Retrocompatibilidad: guardar nombre en nombre_real y apodo en nombre
-            $stmt = $conn->prepare("INSERT INTO usuarios (nombre, apodo, email, password_hash, rol) VALUES (?, ?, ?, ?, 'usuario')");
-            $stmt->execute([$apodo, $apodo, $email, $passwordHash]);
+            $stmt = $conn->prepare("INSERT INTO usuarios (nombre, apodo, email, password_hash, rol, ip_address) VALUES (?, ?, ?, ?, 'usuario', ?)");
+            $stmt->execute([$apodo, $apodo, $email, $passwordHash, $ipAddress]);
             // Agregar nombre_real después
             $conn->exec("ALTER TABLE usuarios ADD COLUMN nombre_real VARCHAR(255) NULL AFTER id");
             $conn->exec("UPDATE usuarios SET nombre_real = ? WHERE email = ?");
@@ -435,6 +743,10 @@ function handleLogin($conn, $input, $method) {
         echo json_encode(['success' => false, 'message' => 'Método no permitido']);
         return;
     }
+    
+    // Asegurar que las columnas necesarias existan ANTES de cualquier consulta
+    ensureUsuarioColumns($conn);
+    ensureBansColumns($conn);
     
     // Crear tablas de advertencias y bans si no existen
     try {
@@ -538,21 +850,64 @@ function handleLogin($conn, $input, $method) {
         }
     }
     
-    // Verificar si el usuario tiene un ban activo
+    // Verificar si el usuario tiene un ban activo (por usuario_id, IP, nombre o apodo)
     try {
-        $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE usuario_id = ? AND activo = TRUE AND (tipo = 'permanente' OR fecha_fin > NOW()) ORDER BY fecha_inicio DESC LIMIT 1");
+        // Asegurar que las columnas necesarias existan ANTES de cualquier consulta
+        ensureBansColumns($conn);
+        
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        $nombreUsuario = !empty($user['nombre_real']) ? strtolower(trim($user['nombre_real'])) : strtolower(trim($user['nombre'] ?? ''));
+        $apodoUsuario = strtolower(trim($user['apodo'] ?? ''));
+        
+        // IMPORTANTE: Desactivar automáticamente los bans temporales que ya expiraron
+        $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'temporal' AND activo = TRUE AND fecha_fin IS NOT NULL AND fecha_fin <= NOW()");
+        $stmt->execute([$user['id']]);
+        
+        // Verificar si tiene ban activo por usuario_id (permanente o temporal que no haya expirado)
+        $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE usuario_id = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
         $banStmt->execute([$user['id']]);
         $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
         
+        // Verificar si las columnas existen antes de usarlas
+        $checkBansIp = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'ip_address'");
+        $checkBansNombre = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'nombre_usuario'");
+        $checkBansApodo = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'apodo_usuario'");
+        $bansIpExists = $checkBansIp->rowCount() > 0;
+        $bansNombreExists = $checkBansNombre->rowCount() > 0;
+        $bansApodoExists = $checkBansApodo->rowCount() > 0;
+        
+        // Si no hay ban por usuario_id, verificar por IP (solo si columna existe)
+        if (!$ban && $ipAddress && $ipAddress !== 'unknown' && $bansIpExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE ip_address = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$ipAddress]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        // Si no hay ban por IP, verificar por nombre (solo si columna existe)
+        if (!$ban && !empty($nombreUsuario) && $bansNombreExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE LOWER(TRIM(nombre_usuario)) = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$nombreUsuario]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        // Si no hay ban por nombre, verificar por apodo (solo si columna existe)
+        if (!$ban && !empty($apodoUsuario) && $bansApodoExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE LOWER(TRIM(apodo_usuario)) = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$apodoUsuario]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
         if ($ban) {
-            // Verificar si ya tiene una apelación pendiente o si ya fue desbaneado una vez
+            // Verificar si ya tiene una apelación pendiente o si ya fue desbaneado 3 veces
             $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE ban_id = ? AND estado = 'pendiente'");
             $stmt->execute([$ban['id']]);
             $tieneApelacionPendiente = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
             
+            // Contar apelaciones aprobadas (hasta 3 permitidas)
             $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
             $stmt->execute([$user['id']]);
-            $yaDesbaneadoUnaVez = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+            $apelacionesAprobadas = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+            $yaAlcanzoLimite = $apelacionesAprobadas >= 3;
             
             $mensajeBan = '';
             if ($ban['tipo'] === 'permanente') {
@@ -562,24 +917,71 @@ function handleLogin($conn, $input, $method) {
                 $mensajeBan = 'Tu cuenta está temporalmente baneada hasta ' . $fechaFin . '. Motivo: ' . $ban['motivo'];
             }
             
-            if (!$yaDesbaneadoUnaVez && !$tieneApelacionPendiente) {
-                $mensajeBan .= ' | Puedes apelar este ban una vez.';
+            if (!$yaAlcanzoLimite && !$tieneApelacionPendiente) {
+                $apelacionesRestantes = 3 - $apelacionesAprobadas;
+                $mensajeBan .= ' | Puedes apelar este ban hasta 3 veces. Te quedan ' . $apelacionesRestantes . ' apelación(es).';
             } elseif ($tieneApelacionPendiente) {
                 $mensajeBan .= ' | Tienes una apelación pendiente de revisión.';
-            } elseif ($yaDesbaneadoUnaVez) {
-                $mensajeBan .= ' | Ya fuiste desbaneado una vez, no puedes apelar nuevamente.';
+            } elseif ($yaAlcanzoLimite) {
+                $mensajeBan .= ' | Ya has agotado tus 3 apelaciones permitidas. No puedes apelar nuevamente.';
             }
             
             echo json_encode([
                 'success' => false, 
                 'message' => $mensajeBan,
                 'ban_id' => $ban['id'],
-                'puede_apelar' => !$yaDesbaneadoUnaVez && !$tieneApelacionPendiente
+                'usuario_id' => $user['id'], // Incluir usuario_id para la apelación
+                'puede_apelar' => !$yaAlcanzoLimite && !$tieneApelacionPendiente,
+                'ban_motivo' => $ban['motivo'],
+                'ban_tipo' => $ban['tipo']
             ]);
             return;
         }
     } catch (Exception $e) {
         // Si la tabla no existe, continuar
+    }
+    
+    // Actualizar IP del usuario en login (si existe la columna)
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+    try {
+        $checkIpColumn = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'ip_address'");
+        if ($checkIpColumn->rowCount() > 0) {
+            $updateIpStmt = $conn->prepare("UPDATE usuarios SET ip_address = ? WHERE id = ?");
+            $updateIpStmt->execute([$ipAddress, $user['id']]);
+        } else {
+            // Agregar columna si no existe
+            $conn->exec("ALTER TABLE usuarios ADD COLUMN ip_address VARCHAR(45) NULL AFTER fecha_registro");
+            $updateIpStmt = $conn->prepare("UPDATE usuarios SET ip_address = ? WHERE id = ?");
+            $updateIpStmt->execute([$ipAddress, $user['id']]);
+        }
+    } catch (Exception $e) {
+        // Continuar si hay error
+    }
+    
+    // 🚫 VERIFICACIÓN ADICIONAL: Verificar ban por IP después de actualizar IP (solo si columna existe)
+    if ($ipAddress && $ipAddress !== 'unknown') {
+        $checkBansIp = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'ip_address'");
+        if ($checkBansIp->rowCount() > 0) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE ip_address = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$ipAddress]);
+            $banPorIp = $banStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($banPorIp) {
+                $mensajeBan = $banPorIp['tipo'] === 'permanente' 
+                    ? 'Tu IP está permanentemente baneada. Motivo: ' . $banPorIp['motivo']
+                    : 'Tu IP está temporalmente baneada hasta ' . date('d/m/Y H:i', strtotime($banPorIp['fecha_fin'])) . '. Motivo: ' . $banPorIp['motivo'];
+                
+                echo json_encode([
+                    'success' => false,
+                    'message' => $mensajeBan,
+                    'ban_id' => $banPorIp['id'],
+                    'ban_tipo' => $banPorIp['tipo'],
+                    'puede_apelar' => true,
+                    'ban_motivo' => $banPorIp['motivo']
+                ]);
+                return;
+            }
+        }
     }
     
     $stmt = $conn->prepare("UPDATE usuarios SET fecha_ultimo_acceso = NOW() WHERE id = ?");
@@ -663,6 +1065,15 @@ function crearTablaIntentosOfensivos($conn) {
 function detectarContenidoOfensivo($texto) {
     if (empty($texto)) return false;
     
+    // PRIMERO: Normalizar texto removiendo caracteres especiales y números para detectar camuflajes
+    // Reemplazar números comunes que se usan para camuflar letras
+    $textoNormalizado = mb_strtolower($texto, 'UTF-8');
+    $textoNormalizado = str_replace(['0', '1', '3', '4', '5', '7'], ['o', 'i', 'e', 'a', 's', 't'], $textoNormalizado);
+    // Reemplazar caracteres especiales comunes usados para camuflar
+    $textoNormalizado = str_replace(['@', '$', '!', '*', '#', '&', '+', '=', '_', '-', '.'], ['a', 's', 'i', '', '', '', '', '', '', '', ''], $textoNormalizado);
+    // Remover múltiples caracteres especiales consecutivos
+    $textoNormalizado = preg_replace('/[^a-záéíóúñü]/i', '', $textoNormalizado);
+    
     // Lista de palabras ofensivas/obscenas (en español e inglés)
     $palabrasOfensivas = [
         // Palabras ofensivas comunes en español
@@ -686,6 +1097,7 @@ function detectarContenidoOfensivo($texto) {
         'carajo', 'carajos',
         'hostia', 'hostias', 'ostia', 'ostias',
         'gilipollas', 'capullo', 'capullos', 'capulla', 'capullas',
+        'polla', 'pollas', 'pollón', 'pollona',
         'zorra', 'zorras', 'zorro', 'zorros',
         'perra', 'perras', 'perro', 'perros',
         'bastardo', 'bastarda', 'bastardos', 'bastardas',
@@ -747,31 +1159,58 @@ function detectarContenidoOfensivo($texto) {
         'pathetic', 'pathetically'
     ];
     
-    // Normalizar texto para búsqueda (convertir a minúsculas)
+    // Normalizar texto original para búsqueda (convertir a minúsculas)
     $textoLower = mb_strtolower($texto, 'UTF-8');
     
-    // Buscar palabras ofensivas
+    // Buscar palabras ofensivas en el texto original Y en el texto normalizado (sin camuflajes)
     foreach ($palabrasOfensivas as $palabra) {
         $palabraLower = mb_strtolower(trim($palabra), 'UTF-8');
         
         // Para frases (palabras con espacios), buscar como substring
         if (strpos($palabraLower, ' ') !== false) {
+            // Buscar en texto original
             if (strpos($textoLower, $palabraLower) !== false) {
+                return true;
+            }
+            // Buscar en texto normalizado (sin camuflajes)
+            if (strpos($textoNormalizado, $palabraLower) !== false) {
                 return true;
             }
         } 
         // Para palabras de 4 o más caracteres, buscar como substring (para detectar en emails/contraseñas)
         elseif (strlen($palabraLower) >= 4) {
-            // Buscar como substring para emails y contraseñas
+            // Buscar en texto original
             if (strpos($textoLower, $palabraLower) !== false) {
                 return true;
+            }
+            // Buscar en texto normalizado (sin camuflajes) - MÁS IMPORTANTE PARA EMAILS
+            if (strpos($textoNormalizado, $palabraLower) !== false) {
+                return true;
+            }
+            // Buscar con variaciones comunes de camuflaje (letras reemplazadas por números)
+            $variaciones = [
+                str_replace('a', '4', $palabraLower),
+                str_replace('e', '3', $palabraLower),
+                str_replace('i', '1', $palabraLower),
+                str_replace('o', '0', $palabraLower),
+                str_replace('s', '5', $palabraLower),
+                str_replace('t', '7', $palabraLower),
+            ];
+            foreach ($variaciones as $variacion) {
+                if (strpos($textoLower, $variacion) !== false) {
+                    return true;
+                }
             }
         } 
         // Para palabras cortas (3 caracteres o menos), buscar como palabra completa para evitar falsos positivos
         else {
             // Normalizar texto removiendo caracteres especiales pero manteniendo estructura
-            $textoNormalizado = preg_replace('/[^a-záéíóúñü0-9]/i', ' ', $textoLower);
-            $textoNormalizado = preg_replace('/\s+/', ' ', $textoNormalizado);
+            $textoParaBuscar = preg_replace('/[^a-záéíóúñü0-9]/i', ' ', $textoLower);
+            $textoParaBuscar = preg_replace('/\s+/', ' ', $textoParaBuscar);
+            if (preg_match('/\b' . preg_quote($palabraLower, '/') . '\b/i', $textoParaBuscar)) {
+                return true;
+            }
+            // También buscar en texto normalizado
             if (preg_match('/\b' . preg_quote($palabraLower, '/') . '\b/i', $textoNormalizado)) {
                 return true;
             }
@@ -1351,11 +1790,17 @@ function handleSaveRegistroAmbiental($conn, $input, $method) {
         // Guardar intento de contenido ofensivo
         $camposAfectados = implode(', ', $contenidoOfensivoEncontrado);
         $contenidoIntentado = json_encode([
-            'tipo_actividad' => $input['tipo_actividad'] ?? '',
-            'descripcion_breve' => $input['descripcion_breve'] ?? '',
-            'observaciones' => $input['observaciones'] ?? '',
-            'materiales_utilizados' => $input['materiales_utilizados'] ?? '',
-            'notas' => $input['notas'] ?? ''
+            'nombre' => $nombre ?? '',
+            'especie' => $especie ?? '',
+            'responsable' => $responsable ?? '',
+            'brigada' => $brigada ?? '',
+            'comunidad' => $comunidad ?? '',
+            'sitio' => $sitio ?? '',
+            'tipo_actividad' => $tipoActividad ?? '',
+            'descripcion_breve' => $descripcionBreve ?? '',
+            'observaciones' => $observaciones ?? '',
+            'materiales_utilizados' => $materialesUtilizados ?? '',
+            'notas' => $notas ?? ''
         ]);
         
         $stmt = $conn->prepare("
@@ -1926,7 +2371,11 @@ function handleAdminLogin($conn, $input, $method) {
     
     // Verificar si el administrador tiene un ban activo (por si acaso)
     try {
-        $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE usuario_id = (SELECT id FROM usuarios WHERE email = ?) AND activo = TRUE AND (tipo = 'permanente' OR fecha_fin > NOW())");
+        // IMPORTANTE: Desactivar automáticamente los bans temporales que ya expiraron
+        $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = (SELECT id FROM usuarios WHERE email = ?) AND tipo = 'temporal' AND activo = TRUE AND fecha_fin IS NOT NULL AND fecha_fin <= NOW()");
+        $stmt->execute([$email]);
+        
+        $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE usuario_id = (SELECT id FROM usuarios WHERE email = ?) AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
         $banStmt->execute([$email]);
         $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
         
@@ -2072,6 +2521,41 @@ function handleCheckEmail($conn, $input, $method) {
     
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo json_encode(['success' => false, 'message' => 'Email inválido']);
+        return;
+    }
+    
+    // VALIDAR CONTENIDO OFENSIVO EN EL EMAIL
+    if (detectarContenidoOfensivo($email)) {
+        // Crear tabla de intentos si no existe
+        crearTablaIntentosOfensivos($conn);
+        
+        // Obtener IP del usuario
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        
+        // Intentar obtener usuario_id si existe (por email)
+        $usuarioId = null;
+        $stmt = $conn->prepare("SELECT id FROM usuarios WHERE email = ?");
+        $stmt->execute([$email]);
+        $usuarioExistente = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($usuarioExistente) {
+            $usuarioId = $usuarioExistente['id'];
+        }
+        
+        // Guardar intento de contenido ofensivo
+        $contenidoIntentado = json_encode(['email' => $email]);
+        
+        $stmt = $conn->prepare("
+            INSERT INTO intentos_contenido_ofensivo 
+            (usuario_id, tipo_intento, campos_afectados, contenido_intentado, ip_address) 
+            VALUES (?, 'verificacion_email', 'email', ?, ?)
+        ");
+        $stmt->execute([$usuarioId, $contenidoIntentado, $ipAddress]);
+        
+        echo json_encode([
+            'success' => false,
+            'message' => 'El correo electrónico contiene lenguaje ofensivo o inapropiado. No se puede usar un correo con contenido ofensivo.',
+            'contenido_ofensivo' => true
+        ]);
         return;
     }
     
@@ -2259,6 +2743,15 @@ function handleDarAdvertencia($conn, $input, $method) {
             $stmt->execute([$usuarioId]);
             $bansTemporalesPrevios = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
+            // Obtener información del usuario para guardar IP, nombre y apodo
+            $stmt = $conn->prepare("SELECT nombre_real, nombre, apodo, ip_address FROM usuarios WHERE id = ?");
+            $stmt->execute([$usuarioId]);
+            $usuarioInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $nombreUsuario = !empty($usuarioInfo['nombre_real']) ? $usuarioInfo['nombre_real'] : ($usuarioInfo['nombre'] ?? '');
+            $apodoUsuario = !empty($usuarioInfo['apodo']) ? $usuarioInfo['apodo'] : ($usuarioInfo['nombre'] ?? '');
+            $ipAddress = $usuarioInfo['ip_address'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+            
             // Si ya tiene 2 bans temporales, aplicar ban permanente
             if ($bansTemporalesPrevios >= 2) {
                 // Desactivar todos los bans permanentes anteriores antes de crear uno nuevo
@@ -2266,15 +2759,15 @@ function handleDarAdvertencia($conn, $input, $method) {
                 $stmt->execute([$usuarioId]);
                 
                 $motivoBan = "Ban permanente automático: 3 advertencias y 3 bans temporales previos";
-                $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo) VALUES (?, ?, 'permanente', ?)");
-                $stmt->execute([$usuarioId, $admin['id'], $motivoBan]);
+                $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo, ip_address, nombre_usuario, apodo_usuario) VALUES (?, ?, 'permanente', ?, ?, ?, ?)");
+                $stmt->execute([$usuarioId, $admin['id'], $motivoBan, $ipAddress, $nombreUsuario, $apodoUsuario]);
                 $mensaje .= ". Se aplicó ban permanente automático (3 advertencias + 3 bans temporales previos)";
             } else {
                 // Aplicar ban temporal (7 días)
                 $fechaFin = date('Y-m-d H:i:s', strtotime('+7 days'));
                 $motivoBan = "Ban temporal automático: 3 advertencias acumuladas";
-                $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo, fecha_fin) VALUES (?, ?, 'temporal', ?, ?)");
-                $stmt->execute([$usuarioId, $admin['id'], $motivoBan, $fechaFin]);
+                $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo, fecha_fin, ip_address, nombre_usuario, apodo_usuario) VALUES (?, ?, 'temporal', ?, ?, ?, ?, ?)");
+                $stmt->execute([$usuarioId, $admin['id'], $motivoBan, $fechaFin, $ipAddress, $nombreUsuario, $apodoUsuario]);
                 $mensaje .= ". Se aplicó ban temporal automático de 7 días (3 advertencias)";
             }
         }
@@ -2397,9 +2890,18 @@ function handleDarBan($conn, $input, $method) {
             }
         }
         
-        // Si es ban permanente, desactivar todos los bans permanentes anteriores
+        // IMPORTANTE: Desactivar TODOS los bans anteriores (temporales y permanentes) antes de aplicar el nuevo
+        // Esto asegura que solo el ban más reciente esté activo
         if ($tipo === 'permanente') {
-            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'permanente' AND activo = TRUE");
+            // Si es permanente, desactivar todos los bans anteriores (temporales y permanentes)
+            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND activo = TRUE");
+            $stmt->execute([$usuarioId]);
+        } else {
+            // Si es temporal, desactivar todos los bans temporales anteriores
+            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'temporal' AND activo = TRUE");
+            $stmt->execute([$usuarioId]);
+            // También desactivar bans temporales expirados
+            $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'temporal' AND activo = TRUE AND (fecha_fin IS NULL OR fecha_fin <= NOW())");
             $stmt->execute([$usuarioId]);
         }
         
@@ -2408,18 +2910,68 @@ function handleDarBan($conn, $input, $method) {
             $fechaFin = date('Y-m-d H:i:s', strtotime("+$dias days"));
         }
         
-        $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo, fecha_fin) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$usuarioId, $admin['id'], $tipo, $motivo, $fechaFin]);
+        // Asegurar que las columnas necesarias existan
+        ensureUsuarioColumns($conn);
+        
+        // Obtener información del usuario para guardar IP, nombre y apodo
+        $checkIpColumn = $conn->query("SHOW COLUMNS FROM usuarios LIKE 'ip_address'");
+        $ipColumnExists = $checkIpColumn->rowCount() > 0;
+        
+        $stmt = $conn->prepare("SELECT nombre_real, nombre, apodo FROM usuarios WHERE id = ?");
+        $stmt->execute([$usuarioId]);
+        $usuarioInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $nombreUsuario = !empty($usuarioInfo['nombre_real']) ? $usuarioInfo['nombre_real'] : ($usuarioInfo['nombre'] ?? '');
+        $apodoUsuario = !empty($usuarioInfo['apodo']) ? $usuarioInfo['apodo'] : ($usuarioInfo['nombre'] ?? '');
+        
+        // Obtener IP del usuario (si está disponible en la sesión o base de datos)
+        $ipAddress = null;
+        if ($ipColumnExists) {
+            // Intentar obtener IP de la última sesión del usuario o usar IP actual
+            $stmt = $conn->prepare("SELECT ip_address FROM usuarios WHERE id = ?");
+            $stmt->execute([$usuarioId]);
+            $userIp = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($userIp && !empty($userIp['ip_address'])) {
+                $ipAddress = $userIp['ip_address'];
+            } else {
+                // Usar IP actual como fallback
+                $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+            }
+        } else {
+            // Usar IP actual como fallback si columna no existe
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        }
+        
+        // Insertar el ban con activo = TRUE explícitamente, incluyendo IP, nombre y apodo
+        $stmt = $conn->prepare("INSERT INTO bans_usuarios (usuario_id, admin_id, tipo, motivo, fecha_fin, activo, ip_address, nombre_usuario, apodo_usuario) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?)");
+        $stmt->execute([$usuarioId, $admin['id'], $tipo, $motivo, $fechaFin, $ipAddress, $nombreUsuario, $apodoUsuario]);
+        
+        // Verificar que el ban se insertó correctamente
+        $verifyStmt = $conn->prepare("SELECT id, tipo, activo, fecha_fin FROM bans_usuarios WHERE usuario_id = ? AND admin_id = ? AND tipo = ? ORDER BY fecha_inicio DESC LIMIT 1");
+        $verifyStmt->execute([$usuarioId, $admin['id'], $tipo]);
+        $banVerificado = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$banVerificado || !$banVerificado['activo']) {
+            error_log("ERROR CRÍTICO: El ban no se insertó correctamente o no está activo. Usuario ID: $usuarioId, Tipo: $tipo");
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: El ban no se aplicó correctamente. Por favor, intenta nuevamente.'
+            ]);
+            return;
+        }
         
         $mensaje = "Ban $tipo aplicado exitosamente";
         if ($tipo === 'temporal') {
-            $mensaje .= " por $dias días";
+            $mensaje .= " por $dias días (hasta " . date('d/m/Y H:i', strtotime($fechaFin)) . ")";
         }
         
         echo json_encode([
             'success' => true,
             'message' => $mensaje,
-            'tipo' => $tipo
+            'tipo' => $tipo,
+            'ban_id' => $banVerificado['id'],
+            'fecha_fin' => $banVerificado['fecha_fin'],
+            'activo' => $banVerificado['activo']
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
@@ -2630,13 +3182,13 @@ function handleCrearApelacion($conn, $input, $method) {
             return;
         }
         
-        // Verificar si el usuario ya fue desbaneado una vez
+        // Verificar si el usuario ya alcanzó el límite de 3 apelaciones aprobadas
         $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
         $stmt->execute([$usuarioId]);
-        $yaDesbaneado = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+        $apelacionesAprobadas = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        if ($yaDesbaneado) {
-            echo json_encode(['success' => false, 'message' => 'Ya has sido desbaneado una vez. No puedes apelar nuevamente']);
+        if ($apelacionesAprobadas >= 3) {
+            echo json_encode(['success' => false, 'message' => 'Ya has agotado tus 3 apelaciones permitidas. No puedes apelar nuevamente']);
             return;
         }
         
@@ -2765,13 +3317,13 @@ function handleResolverApelacion($conn, $input, $method) {
         $desbaneadoUnaVez = false;
         
         if ($accion === 'aprobar') {
-            // Verificar si ya fue desbaneado una vez
+            // Verificar si ya alcanzó el límite de 3 apelaciones aprobadas
             $stmt = $conn->prepare("SELECT COUNT(*) as total FROM apelaciones_bans WHERE usuario_id = ? AND estado = 'aprobada' AND desbaneado_una_vez = TRUE");
             $stmt->execute([$apelacion['usuario_id']]);
-            $yaDesbaneado = $stmt->fetch(PDO::FETCH_ASSOC)['total'] > 0;
+            $apelacionesAprobadas = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
-            if ($yaDesbaneado) {
-                echo json_encode(['success' => false, 'message' => 'Este usuario ya fue desbaneado una vez. No se puede desbanear nuevamente']);
+            if ($apelacionesAprobadas >= 3) {
+                echo json_encode(['success' => false, 'message' => 'Este usuario ya ha agotado sus 3 apelaciones permitidas. No se puede desbanear nuevamente']);
                 return;
             }
             
@@ -2820,6 +3372,104 @@ function handleGetUserByEmail($conn, $input, $method) {
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+function handleCheckBanStatus($conn, $input, $method) {
+    $usuarioId = $input['usuario_id'] ?? null;
+    $email = $input['email'] ?? null;
+    
+    if (empty($usuarioId) && empty($email)) {
+        echo json_encode(['success' => false, 'banned' => false, 'message' => 'Datos insuficientes']);
+        return;
+    }
+    
+    // Asegurar que las columnas necesarias existan ANTES de cualquier consulta
+    ensureUsuarioColumns($conn);
+    ensureBansColumns($conn);
+    
+    try {
+        // Obtener usuario por ID o email
+        if ($usuarioId) {
+            $stmt = $conn->prepare("SELECT id FROM usuarios WHERE id = ?");
+            $stmt->execute([$usuarioId]);
+        } else {
+            $stmt = $conn->prepare("SELECT id FROM usuarios WHERE email = ?");
+            $stmt->execute([$email]);
+        }
+        
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            echo json_encode(['success' => false, 'banned' => false, 'message' => 'Usuario no encontrado']);
+            return;
+        }
+        
+        $userId = $user['id'];
+        
+        // Obtener información completa del usuario
+        $stmt = $conn->prepare("SELECT nombre_real, nombre, apodo, ip_address FROM usuarios WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $ipAddress = $userInfo['ip_address'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+        $nombreUsuario = !empty($userInfo['nombre_real']) ? strtolower(trim($userInfo['nombre_real'])) : strtolower(trim($userInfo['nombre'] ?? ''));
+        $apodoUsuario = strtolower(trim($userInfo['apodo'] ?? ''));
+        
+        // IMPORTANTE: Desactivar automáticamente los bans temporales que ya expiraron
+        $stmt = $conn->prepare("UPDATE bans_usuarios SET activo = FALSE WHERE usuario_id = ? AND tipo = 'temporal' AND activo = TRUE AND fecha_fin IS NOT NULL AND fecha_fin <= NOW()");
+        $stmt->execute([$userId]);
+        
+        // 🚫 VERIFICACIÓN 1: Ban por usuario_id
+        $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE usuario_id = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+        $banStmt->execute([$userId]);
+        $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Verificar si las columnas existen en bans_usuarios antes de usarlas
+        $checkBansIp = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'ip_address'");
+        $checkBansNombre = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'nombre_usuario'");
+        $checkBansApodo = $conn->query("SHOW COLUMNS FROM bans_usuarios LIKE 'apodo_usuario'");
+        $bansIpExists = $checkBansIp->rowCount() > 0;
+        $bansNombreExists = $checkBansNombre->rowCount() > 0;
+        $bansApodoExists = $checkBansApodo->rowCount() > 0;
+        
+        // 🚫 VERIFICACIÓN 2: Ban por IP (si hay IP disponible y columna existe)
+        if (!$ban && $ipAddress && $ipAddress !== 'unknown' && $bansIpExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE ip_address = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$ipAddress]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        // 🚫 VERIFICACIÓN 3: Ban por nombre (normalizado, si columna existe)
+        if (!$ban && !empty($nombreUsuario) && $bansNombreExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE LOWER(TRIM(nombre_usuario)) = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$nombreUsuario]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        // 🚫 VERIFICACIÓN 4: Ban por apodo (normalizado, si columna existe)
+        if (!$ban && !empty($apodoUsuario) && $bansApodoExists) {
+            $banStmt = $conn->prepare("SELECT id, tipo, fecha_fin, motivo FROM bans_usuarios WHERE LOWER(TRIM(apodo_usuario)) = ? AND activo = TRUE AND (tipo = 'permanente' OR (tipo = 'temporal' AND fecha_fin IS NOT NULL AND fecha_fin > NOW())) ORDER BY fecha_inicio DESC LIMIT 1");
+            $banStmt->execute([$apodoUsuario]);
+            $ban = $banStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        if ($ban) {
+            echo json_encode([
+                'success' => true,
+                'banned' => true,
+                'ban' => $ban,
+                'message' => $ban['tipo'] === 'permanente' 
+                    ? 'Tu cuenta está permanentemente baneada. Motivo: ' . $ban['motivo']
+                    : 'Tu cuenta está temporalmente baneada hasta ' . date('d/m/Y H:i', strtotime($ban['fecha_fin'])) . '. Motivo: ' . $ban['motivo']
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'banned' => false
+            ]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'banned' => false, 'message' => 'Error: ' . $e->getMessage()]);
     }
 }
 

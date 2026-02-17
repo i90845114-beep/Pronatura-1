@@ -25,7 +25,7 @@ const adminAuthSystem = {
                 return { success: false, message: data.message || 'Error desconocido al iniciar sesión' };
             }
         } catch (error) {
-            console.error('Error de conexión:', error);
+
             return { success: false, message: 'Error de conexión. Verifica que el servidor esté corriendo.' };
         }
     },
@@ -41,7 +41,7 @@ const adminAuthSystem = {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ token: session.token })
-            }).catch(err => console.error('Error al cerrar sesión en servidor:', err));
+            }).catch(err => );
         }
         localStorage.removeItem(ADMIN_SESSION_KEY);
     },
@@ -82,7 +82,9 @@ const adminAuthSystem = {
     // Obtener sesión
     getSession() {
         const stored = localStorage.getItem(ADMIN_SESSION_KEY);
-        if (!stored) return null;
+        if (!stored) {
+            return null;
+        }
         
         try {
             const session = JSON.parse(stored);
@@ -98,7 +100,7 @@ const adminAuthSystem = {
             
             return session;
         } catch (error) {
-            console.error('Error al parsear sesión:', error);
+
             return null;
         }
     },

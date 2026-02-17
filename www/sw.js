@@ -1,15 +1,14 @@
 // Service Worker para ProNatura PWA
 // Versión del cache - incrementar para forzar actualización
-// ÚLTIMA ACTUALIZACIÓN: v1.0.6 - Cache individual para evitar fallos en addAll
-const CACHE_NAME = 'pronatura-v1.0.6';
-const RUNTIME_CACHE = 'pronatura-runtime-v1.0.6';
+// ÚLTIMA ACTUALIZACIÓN: v1.5.0 - Error sintaxis línea 225 corregido
+const CACHE_NAME = 'pronatura-v1.5.0';
+const RUNTIME_CACHE = 'pronatura-runtime-v1.5.0';
 
 // Archivos estáticos para cachear en la instalación
 // Usar rutas absolutas desde la raíz del dominio
 const urlsToCache = [
   '/',
   '/pages/inicio.html',
-  '/pages/login.html',
   '/pages/registro.html',
   '/pages/index.html',
   '/pages/nuevo-registro.html',
@@ -28,7 +27,7 @@ const urlsToCache = [
 
 // Evento de instalación
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando Service Worker v1.0.6...');
+
   // Forzar activación inmediata sin esperar a que se cierren otras pestañas
   self.skipWaiting();
   
@@ -36,18 +35,18 @@ self.addEventListener('install', (event) => {
     // Primero eliminar todos los caches antiguos
     caches.keys().then((cacheNames) => {
       const oldCaches = cacheNames.filter(name => 
-        !name.startsWith('pronatura-v1.0.6') && 
-        !name.startsWith('pronatura-runtime-v1.0.6')
+        !name.startsWith('pronatura-v1.5.0') && 
+        !name.startsWith('pronatura-runtime-v1.5.0')
       );
       return Promise.all(oldCaches.map(name => {
-        console.log('[SW] Eliminando cache antiguo:', name);
+
         return caches.delete(name);
       }));
     }).then(() => {
       // Ahora crear el nuevo cache
       return caches.open(CACHE_NAME);
     }).then((cache) => {
-      console.log('[SW] Cache abierto, agregando archivos estáticos');
+
       // Cachear archivos individualmente para que no falle todo si uno falla
       const cachePromises = urlsToCache.map(url => {
         return fetch(url)
@@ -56,19 +55,19 @@ self.addEventListener('install', (event) => {
             if (response.ok) {
               return cache.put(url, response);
             } else {
-              console.warn(`[SW] No se pudo cachear ${url}: ${response.status} ${response.statusText}`);
+
               return Promise.resolve();
             }
           })
           .catch(error => {
-            console.warn(`[SW] Error al cachear ${url}:`, error.message);
+
             return Promise.resolve(); // Continuar aunque falle
           });
       });
       
       return Promise.all(cachePromises);
     }).then(() => {
-      console.log('[SW] Service Worker v1.0.6 instalado correctamente');
+
       // Forzar activación inmediata
       return self.skipWaiting();
     })
@@ -77,7 +76,7 @@ self.addEventListener('install', (event) => {
 
 // Evento de activación
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando Service Worker v1.0.6...');
+
   // Tomar control inmediatamente de todas las pestañas
   self.clients.claim();
   
@@ -86,15 +85,15 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // Eliminar TODOS los caches antiguos (no solo los que no coinciden)
-          if (!cacheName.startsWith('pronatura-v1.0.6') && !cacheName.startsWith('pronatura-runtime-v1.0.6')) {
-            console.log('[SW] Eliminando cache antiguo:', cacheName);
+          if (!cacheName.startsWith('pronatura-v1.5.0') && !cacheName.startsWith('pronatura-runtime-v1.5.0')) {
+
             return caches.delete(cacheName);
           }
         })
       );
     })
     .then(() => {
-      console.log('[SW] Service Worker v1.0.6 activado correctamente');
+
       // Tomar control de todas las páginas inmediatamente
       return self.clients.claim();
     })
@@ -133,7 +132,7 @@ self.addEventListener('fetch', (event) => {
           // Si falla la red, intentar cache runtime como último recurso
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
-              console.log('[SW] Usando respuesta cacheada de API:', event.request.url);
+
               return cachedResponse;
             }
             // Si no hay cache, devolver error
@@ -155,33 +154,49 @@ self.addEventListener('fetch', (event) => {
   
   // Para archivos HTML: Network First (siempre obtener la versión más reciente)
   if (url.pathname.match(/\.html$/)) {
+    // Para grupos.html y otros archivos críticos, siempre obtener de la red sin cachear
+    if (url.pathname.includes('grupos.html') || url.pathname.includes('chat.html')) {
+      event.respondWith(
+        fetch(event.request, { cache: 'no-store' })
+          .then((response) => {
+            // No cachear, siempre usar la versión más reciente
+            return response;
+          })
+          .catch(() => {
+            // Solo si falla completamente la red, intentar cache como último recurso
+            return caches.match(event.request);
+          })
+      );
+      return;
+    }
+    
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           // Si la respuesta es 404, intentar alternativas desde cache
           if (response.status === 404) {
-            console.log(`[SW] 404 para ${url.pathname}, intentando alternativas desde cache...`);
+
             // Intentar cargar desde cache primero
             return caches.match(event.request).then((cachedResponse) => {
               if (cachedResponse) {
-                console.log(`[SW] Encontrado ${url.pathname} en cache`);
+
                 return cachedResponse;
               }
               // Si es inicio.html, intentar alternativas
               if (url.pathname.includes('inicio.html')) {
                 return caches.match('/pages/index.html').then((indexResponse) => {
                   if (indexResponse) {
-                    console.log('[SW] Redirigiendo a /pages/index.html');
+
                     return indexResponse;
                   }
                   return caches.match('/index.html').then((rootIndexResponse) => {
                     if (rootIndexResponse) {
-                      console.log('[SW] Redirigiendo a /index.html');
+
                       return rootIndexResponse;
                     }
                     return caches.match('/').then((rootResponse) => {
                       if (rootResponse) {
-                        console.log('[SW] Redirigiendo a raíz');
+
                         return rootResponse;
                       }
                       // Si nada funciona, devolver la respuesta 404 original
@@ -207,7 +222,6 @@ self.addEventListener('fetch', (event) => {
           // Si la respuesta no es 200, intentar cache como fallback
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
-              console.log('[SW] Usando versión cacheada (red falló):', event.request.url);
               return cachedResponse;
             }
             return response; // Devolver la respuesta original (incluso si es 404)
@@ -217,7 +231,7 @@ self.addEventListener('fetch', (event) => {
           // Si falla la red, intentar cache
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
-              console.log('[SW] Sin conexión, usando cache:', event.request.url);
+
               return cachedResponse;
             }
             // Si no hay cache y es una página HTML, intentar inicio.html o index.html
@@ -246,7 +260,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request)
         .then((cachedResponse) => {
           if (cachedResponse) {
-            console.log('[SW] Sirviendo desde cache:', event.request.url);
+
             return cachedResponse;
           }
           
@@ -304,8 +318,7 @@ self.addEventListener('fetch', (event) => {
 
 // Manejo de mensajes desde la app
 self.addEventListener('message', (event) => {
-  console.log('[SW] Mensaje recibido:', event.data);
-  
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
@@ -321,13 +334,13 @@ self.addEventListener('message', (event) => {
 
 // Manejo de notificaciones push (para implementación futura)
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification recibida');
+
   // Implementar lógica de notificaciones push aquí
 });
 
 // Manejo de clics en notificaciones
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notificación clickeada');
+
   event.notification.close();
   // Abrir la app cuando se hace clic en la notificación
   event.waitUntil(

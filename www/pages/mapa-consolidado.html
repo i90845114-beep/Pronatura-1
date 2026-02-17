@@ -6,9 +6,11 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>Mapa Consolidado - Contraloría Social Tamaulipas</title>
+    <title>Mapa Consolidado - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#4D8143">
@@ -122,7 +124,7 @@
 
     <!-- Header -->
 
-    <header class="header">
+    <header class="header teal-header">
 
         <h1>Registro de Animales</h1>
 
@@ -152,6 +154,14 @@
 
             </a>
 
+            <a href="grupos.html" class="nav-item" id="gruposNavItem" style="display: none;">
+
+                <span class="nav-icon">👥</span>
+
+                Grupos
+
+            </a>
+
             <a href="admin.html" class="nav-item admin-nav-item" id="adminNavItem" style="display: none;">
 
                 <span class="nav-icon">⚙</span>
@@ -162,24 +172,51 @@
 
         </nav>
 
-        <div class="user-info">
-
-            <span id="userName" class="user-name"></span>
-
-            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
-
+        <div class="user-info" id="userInfoWrap">
+            <div class="profile-dropdown-wrapper">
+                <button type="button" class="profile-trigger" id="profileTrigger" aria-expanded="false" aria-haspopup="true" aria-label="Abrir menú de usuario">
+                    <span class="profile-avatar" id="profileAvatar" style="width:22px;height:22px;min-width:22px;min-height:22px;max-width:22px;max-height:22px;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%"><img src="../assets/icons/perfil-removebg-preview.png" alt="" style="width:100%;height:100%;max-width:22px;max-height:22px;object-fit:cover;display:block"></span>
+                    <span class="user-name" id="userName"></span>
+                    <span class="profile-chevron" aria-hidden="true">▼</span>
+                </button>
+                <div class="profile-dropdown" id="profileDropdown" role="menu" hidden style="position: absolute !important; top: 100% !important; right: 0 !important; left: auto !important; width: 320px !important;">
+                <div class="profile-dropdown-header">
+                    <div class="profile-dropdown-name" id="profileDropdownName"></div>
+                    <div class="profile-dropdown-email" id="profileDropdownEmail"></div>
+                </div>
+                <div class="profile-dropdown-links" style="display: flex !important; flex-direction: column !important; gap: 0.5rem !important; padding: 0.75rem !important;">
+                    <a href="catalogo.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🌳</span> Catálogo de categorías</a>
+                    <a href="recuperar-contraseña.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🔐</span> Cambiar contraseña</a>
+                    <a href="inicio.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🏠</span> Ir al inicio</a>
+                    <a href="admin.html" class="profile-dropdown-link" id="profileDropdownAdmin" style="display: none; width: 100% !important; margin-bottom: 0.5rem !important;" role="menuitem"><span class="profile-dropdown-icon">⚙</span> Administración</a>
+                </div>
+                <div class="profile-dropdown-divider"></div>
+                <button type="button" class="profile-dropdown-item logout" id="profileLogoutBtn" role="menuitem"><span class="profile-dropdown-icon">🚪</span> Cerrar sesión</button>
+                </div>
+            </div>
         </div>
-
     </header>
-
-
+    <script>
+    (function(){ var p = (window.location.pathname || ''); var base = p.indexOf('/pages/') !== -1 ? '../' : ''; var el = document.getElementById('profileAvatar'); if (el) { var img = el.querySelector('img'); if (img) img.src = base + 'assets/icons/perfil-removebg-preview.png'; } })();
+    (function(){ var path = window.location.pathname || ''; if (path.indexOf('/pages/') === -1) { var segs = path.split('/').filter(Boolean); if (segs.length <= 1) { document.querySelectorAll('.nav-bar .nav-item').forEach(function(a){ var h = a.getAttribute('href'); if (h && !/^https?:/.test(h) && h.charAt(0) !== '/') a.setAttribute('href', 'pages/' + h); }); } } })();
+    </script>
+    <!-- Modal: ¿Acceder a chats o nueva solicitud? -->
+    <div id="chatChoiceModal" class="email-modal" style="display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);">
+        <div class="email-modal-content chat-choice-content" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 16px; padding: 2rem 2.25rem; max-width: 420px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8);">
+            <h2>💬 Chat de Ejidos</h2>
+            <p style="margin: 1rem 0;">¿Qué deseas hacer?</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" id="btnAccederChats" class="btn-primary" style="width: 100%; padding: 0.9rem;">Acceder a mis chats</button>
+                <button type="button" id="btnNuevaSolicitud" class="btn-secondary" style="width: 100%; padding: 0.9rem;">Enviar nueva solicitud</button>
+                <button type="button" id="btnCancelarChatChoice" class="btn-secondary" style="width: 100%; padding: 0.6rem; background: #e0e0e0;">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Map View -->
     <div class="map-view">
         <div id="leafletMap"></div>
     </div>
-
-
 
     <script src="../assets/js/auth.js"></script>
 
@@ -189,30 +226,29 @@
         (function() {
             // Establecer flag inmediatamente cuando se carga la página (por si el usuario ya está navegando)
             sessionStorage.setItem('index_acceso_permitido', 'true');
-            console.log('✅ [mapa-consolidado] Flag establecido al cargar página');
-            
+
             // También interceptar clics cuando el DOM esté listo
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
-                    const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                    const bibliotecaLink = document.querySelector('a[href="index.html"], a[href="pages/index.html"]');
                     if (bibliotecaLink) {
                         bibliotecaLink.addEventListener('click', function(e) {
-                            console.log('🔗 [mapa-consolidado] Navegando a Biblioteca - estableciendo flag');
+
                             sessionStorage.setItem('navegando_internamente', 'true');
                             sessionStorage.setItem('index_acceso_permitido', 'true');
-                            console.log('✅ [mapa-consolidado] Flag de navegación interna establecido');
+
                         });
                     }
                 });
             } else {
                 // DOM ya está listo
-                const bibliotecaLink = document.querySelector('a[href="index.html"]');
+                const bibliotecaLink = document.querySelector('a[href="index.html"], a[href="pages/index.html"]');
                 if (bibliotecaLink) {
                     bibliotecaLink.addEventListener('click', function(e) {
-                        console.log('🔗 [mapa-consolidado] Navegando a Biblioteca - estableciendo flag');
+
                         sessionStorage.setItem('navegando_internamente', 'true');
                         sessionStorage.setItem('index_acceso_permitido', 'true');
-                        console.log('✅ [mapa-consolidado] Flag de navegación interna establecido');
+
                     });
                 }
             }
@@ -223,33 +259,43 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
 
-            // Mostrar información del usuario
-
-            const user = window.authSystem.getCurrentUser();
+            // Mostrar información del usuario (authSystem o sesión en storage)
+            let user = window.authSystem ? window.authSystem.getCurrentUser() : null;
+            if (!user) {
+                try {
+                    const sessionJson = sessionStorage.getItem('current_session') || localStorage.getItem('current_session');
+                    if (sessionJson) user = JSON.parse(sessionJson);
+                } catch (e) { }
+            }
 
             if (user) {
 
-                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
-
-                
-
-                // Verificar rol desde la API si no está en la sesión
+                const nombre = user.nombre || 'Usuario';
+                const inicial = nombre.charAt(0).toUpperCase();
+                document.getElementById('userName').textContent = nombre;
+                var av = document.getElementById('profileAvatar'); if (av && !av.querySelector('img')) av.textContent = inicial;
+                document.getElementById('profileDropdownName').textContent = nombre;
+                document.getElementById('profileDropdownEmail').textContent = user.email || '';
 
                 let userRol = user.rol;
 
                 if (!userRol) {
 
                     try {
-
-                        const response = await fetch(`../api/api.php?action=get_user_info&user_id=${user.id}`);
+                        const currentUrl = window.location.href.toLowerCase();
+                        const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                           currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                        const apiUrl = isHostinger 
+                            ? `/api/api.php?action=get_user_info&user_id=${user.id}`
+                            : `../api/api.php?action=get_user_info&user_id=${user.id}`;
+                        const response = await fetch(apiUrl);
 
                         const data = await response.json();
 
                         if (data.success && data.user && data.user.rol) {
 
                             userRol = data.user.rol;
-
-                            // Actualizar la sesión con el rol
 
                             const updatedUser = { ...user, rol: userRol };
 
@@ -259,15 +305,9 @@
 
                     } catch (error) {
 
-                        console.error('Error al obtener rol del usuario:', error);
-
                     }
 
                 }
-
-                
-
-                // Mostrar botón de administración si es admin
 
                 if (userRol === 'admin') {
 
@@ -279,33 +319,117 @@
 
                     }
 
+                    const profileAdmin = document.getElementById('profileDropdownAdmin');
+
+                    if (profileAdmin) {
+
+                        profileAdmin.style.display = 'flex';
+
+                    }
+
                 }
+
+                // Mostrar enlace de Grupos si está autenticado
+                const gruposNavItem = document.getElementById('gruposNavItem');
+                if (gruposNavItem) {
+                    gruposNavItem.style.display = 'flex';
+                    gruposNavItem.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const modal = document.getElementById('chatChoiceModal');
+                        if (modal) { modal.style.display = 'flex'; modal.classList.add('show'); }
+                    });
+                }
+                (function() {
+                    const modal = document.getElementById('chatChoiceModal');
+                    const btnChats = document.getElementById('btnAccederChats');
+                    const btnSolicitud = document.getElementById('btnNuevaSolicitud');
+                    const btnCancelar = document.getElementById('btnCancelarChatChoice');
+                    if (!modal) return;
+                    function closeModal() { modal.style.display = 'none'; modal.classList.remove('show'); }
+                    async function goToChat() {
+                        const baseUrl = window.location.origin;
+                        const path = window.location.pathname;
+                        const basePath = path.substring(0, path.lastIndexOf('/') + 1);
+                        let estado = sessionStorage.getItem('chat_estado') || '';
+                        let municipio = sessionStorage.getItem('chat_municipio') || '';
+                        let ciudad = sessionStorage.getItem('chat_ciudad') || '';
+                        if (!estado) {
+                            try {
+                                const sessionJson = sessionStorage.getItem('current_session') || localStorage.getItem('current_session');
+                                const session = sessionJson ? JSON.parse(sessionJson) : null;
+                                const userId = session && session.id != null ? parseInt(session.id, 10) : 0;
+                                if (userId > 0 && userId < 2000000000) {
+                                    const res = await fetch(baseUrl + basePath + '../api/chat_api.php?action=obtener_grupos&usuario_id=' + userId);
+                                    const data = await res.json();
+                                    if (data.success && data.grupos && data.grupos.length > 0) {
+                                        const preferir = data.grupos.find(function(g) { return (g.nombre || '').trim() !== 'Ejidos México'; });
+                                        const grupo = preferir || data.grupos[0];
+                                        const nombre = (grupo.nombre || '').trim();
+                                        if ((grupo.nombre || '').trim() !== 'Ejidos México') {
+                                            if ((grupo.estado || '').trim()) estado = (grupo.estado || '').trim();
+                                            else if (nombre.indexOf('Ejidos ') === 0) estado = nombre.substring(7);
+                                        }
+                                    }
+                                }
+                            } catch (e) { }
+                        }
+                        closeModal();
+                        let chatUrl = baseUrl + basePath + 'chat.html';
+                        if (estado) {
+                            chatUrl += '?estado=' + encodeURIComponent(estado);
+                            if (municipio) chatUrl += '&municipio=' + encodeURIComponent(municipio);
+                            if (ciudad) chatUrl += '&ciudad=' + encodeURIComponent(ciudad);
+                        }
+                        window.location.href = chatUrl;
+                    }
+                    function goToGrupos() {
+                        const baseUrl = window.location.origin;
+                        const path = window.location.pathname;
+                        const basePath = path.substring(0, path.lastIndexOf('/') + 1);
+                        closeModal();
+                        window.location.href = baseUrl + basePath + 'grupos.html';
+                    }
+                    if (btnChats) btnChats.addEventListener('click', goToChat);
+                    if (btnSolicitud) btnSolicitud.addEventListener('click', goToGrupos);
+                    if (btnCancelar) btnCancelar.addEventListener('click', closeModal);
+                    modal.addEventListener('click', function(ev) { if (ev.target === modal) closeModal(); });
+                })();
 
             }
 
-            
+            const profileTrigger = document.getElementById('profileTrigger');
+            const profileDropdown = document.getElementById('profileDropdown');
+            const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
-            // Botón cerrar sesión
+            if (profileTrigger && profileDropdown) {
+                profileTrigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const isOpen = profileDropdown.classList.toggle('is-open');
+                    profileTrigger.classList.toggle('is-open', isOpen);
+                    profileTrigger.setAttribute('aria-expanded', isOpen);
+                    profileDropdown.hidden = !isOpen;
+                });
+                document.addEventListener('click', function() {
+                    profileDropdown.classList.remove('is-open');
+                    profileTrigger.classList.remove('is-open');
+                    profileTrigger.setAttribute('aria-expanded', 'false');
+                    profileDropdown.hidden = true;
+                });
+            }
 
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-
-                if (confirm('¿Deseas cerrar sesión?')) {
-
-                    window.authSystem.logout();
-
-                    window.location.href = 'inicio.html';
-
-                }
-
-            });
-
-            
+            if (profileLogoutBtn) {
+                profileLogoutBtn.addEventListener('click', () => {
+                    if (confirm('¿Deseas cerrar sesión?')) {
+                        window.authSystem.logout();
+                        window.location.href = 'inicio.html';
+                    }
+                });
+            }
 
             await loadMapMarkers();
 
         });
-
-
 
         // Variable global para el mapa de Leaflet
         let map = null;
@@ -314,7 +438,7 @@
             try {
                 // Verificar que Leaflet esté cargado
                 if (typeof L === 'undefined') {
-                    console.error('Leaflet no está cargado');
+
                     document.getElementById('leafletMap').innerHTML = '<div style="padding: 2rem; text-align: center; color: #d32f2f;"><h3>Error: Leaflet no se cargó correctamente</h3><p>Recarga la página</p></div>';
                     return;
                 }
@@ -323,7 +447,7 @@
                 if (!map) {
                     const mapContainer = document.getElementById('leafletMap');
                     if (!mapContainer) {
-                        console.error('Contenedor del mapa no encontrado');
+
                         return;
                     }
                     
@@ -348,12 +472,12 @@
                     setTimeout(() => {
                         if (map) {
                             map.invalidateSize();
-                            console.log('Mapa inicializado correctamente');
+
                         }
                     }, 300);
                 }
             } catch (error) {
-                console.error('Error al inicializar el mapa:', error);
+
                 document.getElementById('leafletMap').innerHTML = `<div style="padding: 2rem; text-align: center; color: #d32f2f;"><h3>Error al cargar el mapa</h3><p>${error.message}</p></div>`;
                 return;
             }
@@ -374,7 +498,8 @@
                 let apiUrl;
                 // Cargar TODOS los registros sin filtrar por usuario
                 if (isHostinger) {
-                    apiUrl = `api/api.php?action=get_registros_ambientales`;
+                    // Usar ruta absoluta desde la raíz
+                    apiUrl = `/api/api.php?action=get_registros_ambientales`;
                 } else {
                     if (isInPages) {
                         apiUrl = `../api/api.php?action=get_registros_ambientales`;
@@ -382,9 +507,7 @@
                         apiUrl = `api/api.php?action=get_registros_ambientales`;
                     }
                 }
-                
-                console.log('🔍 Cargando todos los registros desde:', apiUrl);
-                
+
                 const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
@@ -395,16 +518,15 @@
                 
                 if (data.success && data.records) {
                     records = data.records;
-                    console.log('✅ Registros cargados desde API:', records.length);
+
                 } else {
-                    console.warn('⚠️ No se pudieron cargar registros desde la API:', data.message);
+
                 }
             } catch (error) {
-                console.error('❌ Error al cargar registros desde API:', error);
+
                 // Si hay error, intentar con localStorage como respaldo
                 const localRecords = JSON.parse(localStorage.getItem('animalRecords') || '[]');
                 records = localRecords;
-                console.log('📦 Registros cargados desde localStorage (respaldo):', records.length);
             }
             
             // Limpiar marcadores anteriores
@@ -444,7 +566,7 @@
                             markersCount++;
                         }
                     } catch (error) {
-                        console.error('Error al procesar registro:', record, error);
+
                     }
                 }
             });
@@ -529,11 +651,9 @@
 
             // Agregar evento de clic
             marker.on('click', () => {
-                console.log('Marcador clickeado:', record);
+
             });
         }
-
-
 
         function escapeHtml(text) {
 
@@ -548,7 +668,10 @@
     </script>
     
     <!-- PWA Service Worker Registration -->
-    <script src="../assets/js/pwa-register.js"></script>
+    <script src="../assets/js/pwa-register.js?v=2"></script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 
 </body>
 

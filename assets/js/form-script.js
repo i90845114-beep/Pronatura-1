@@ -29,23 +29,152 @@ function getApiUrl(action) {
     }
 }
 
+// Variable global para guardar el valor de categoría que debe establecerse después de cargar
+let categoriaValueToRestore = null;
+let subcategoriaValueToRestore = null;
+// Verificar si el flag ya está establecido desde el HTML (antes de que se cargue este script)
+let isPopulatingForm = window._isPopulatingForm === true || false; // Flag para indicar que estamos poblando el formulario
+let categoriaRestoreInterval = null; // Intervalo para restaurar categoría
+let subcategoriaRestoreInterval = null; // Intervalo para restaurar subcategoría
+
+// Log inicial
+if (isPopulatingForm) {
+
+}
+
+// Función robusta para establecer valor en select
+function establecerValorSelectRobusto(select, value) {
+    if (!select || !value) return false;
+    
+    // Verificar que la opción existe
+    const option = Array.from(select.options).find(opt => opt.value == value);
+    if (!option) {
+
+        return false;
+    }
+    
+    // Método 1: Deseleccionar todas las opciones primero
+    Array.from(select.options).forEach(opt => {
+        opt.selected = false;
+    });
+    
+    // Método 2: Establecer directamente en la opción
+    option.selected = true;
+    
+    // Método 3: Usar selectedIndex
+    const index = Array.from(select.options).indexOf(option);
+    if (index !== -1) {
+        select.selectedIndex = index;
+    }
+    
+    // Método 4: Usar value
+    select.value = value;
+    
+    // Método 5: Forzar actualización visual usando reflow
+    select.style.display = 'none';
+    select.offsetHeight; // Trigger reflow
+    select.style.display = '';
+    
+    // Método 6: Forzar eventos
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Método 7: Verificar y forzar nuevamente si es necesario
+    if (select.value != value) {
+
+        option.selected = true;
+        select.selectedIndex = index;
+        select.value = value;
+    }
+    
+    // Verificar resultado
+    const resultado = select.value == value;
+    if (resultado) {
+        const selectedOption = select.options[select.selectedIndex];
+
+    } else {
+
+    }
+    return resultado;
+}
+
+// Función para iniciar monitoreo y restauración continua
+function iniciarMonitoreoSelect(selectId, valueToRestore, restoreVarName) {
+    const select = document.getElementById(selectId);
+    if (!select || !valueToRestore) return;
+    
+    // Limpiar intervalo anterior si existe
+    if (restoreVarName === 'categoria' && categoriaRestoreInterval) {
+        clearInterval(categoriaRestoreInterval);
+    }
+    if (restoreVarName === 'subcategoria' && subcategoriaRestoreInterval) {
+        clearInterval(subcategoriaRestoreInterval);
+    }
+    
+    // Crear intervalo que verifica y restaura cada 500ms
+    const interval = setInterval(() => {
+        const currentSelect = document.getElementById(selectId);
+        if (currentSelect && currentSelect.value != valueToRestore) {
+
+            establecerValorSelectRobusto(currentSelect, valueToRestore);
+        }
+    }, 500);
+    
+    // Guardar referencia al intervalo
+    if (restoreVarName === 'categoria') {
+        categoriaRestoreInterval = interval;
+    } else {
+        subcategoriaRestoreInterval = interval;
+    }
+    
+    // Limpiar después de 10 segundos
+    setTimeout(() => {
+        clearInterval(interval);
+        if (restoreVarName === 'categoria') {
+            categoriaRestoreInterval = null;
+        } else {
+            subcategoriaRestoreInterval = null;
+        }
+
+    }, 10000);
+}
+
 // CARGAR CATEGORÍAS INMEDIATAMENTE - MÚLTIPLES INTENTOS
 function cargarCategoriasInmediatamente() {
+    // BLOQUEAR COMPLETAMENTE si estamos poblando el formulario
+    // Verificar también el flag global que puede estar establecido desde el HTML
+    if (isPopulatingForm || window._isPopulatingForm === true) {
+
+        isPopulatingForm = true; // Asegurar que el flag local también esté activo
+        return;
+    }
+    
     const select = document.getElementById('categoria');
     if (!select) {
-        console.error('❌ Select no encontrado');
+
         setTimeout(cargarCategoriasInmediatamente, 100);
         return;
     }
     
-    // Si ya tiene más de 1 opción, no hacer nada
+    // Si ya tiene más de 1 opción, verificar si hay un valor que restaurar
     if (select.options.length > 1) {
-        console.log('✅ Ya hay categorías cargadas');
+
+        // Si hay un valor que restaurar, restaurarlo ahora
+        if (categoriaValueToRestore !== null) {
+
+            establecerValorSelectRobusto(select, categoriaValueToRestore);
+            categoriaValueToRestore = null;
+        }
         return;
     }
     
-    console.log('🔄 Cargando categorías AHORA...');
-    
+    // Guardar el valor actual antes de limpiar (si existe)
+    const currentValue = select.value;
+    if (currentValue && currentValue !== '') {
+        categoriaValueToRestore = currentValue;
+
+    }
+
     fetch(getApiUrl('get_categorias'))
         .then(response => response.json())
         .then(data => {
@@ -55,42 +184,97 @@ function cargarCategoriasInmediatamente() {
                     html += `<option value="${cat.id}">${cat.nombre}</option>`;
                 });
                 select.innerHTML = html;
-                console.log(`✅✅✅ ${data.categorias.length} categorías cargadas!`);
+
+                // Restaurar el valor si había uno guardado
+                if (categoriaValueToRestore !== null) {
+
+                    establecerValorSelectRobusto(select, categoriaValueToRestore);
+                    categoriaValueToRestore = null;
+                }
             } else {
-                console.error('❌ No hay categorías en la respuesta');
+
             }
         })
         .catch(error => {
-            console.error('❌ Error:', error);
+
             setTimeout(cargarCategoriasInmediatamente, 500);
         });
 }
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 DOM cargado, inicializando formulario...');
-    cargarCategoriasInmediatamente(); // CARGAR INMEDIATAMENTE
-    await initializeForm();
+// Inicialización: ejecutar cuando el DOM esté listo (o ya lo esté si el script cargó tarde)
+function runFormInit() {
     setupEventListeners();
-    await checkEditMode();
-    
+    var urlParams = new URLSearchParams(window.location.search);
+    var hasEditParam = urlParams.get('edit') === 'true';
+    if (!hasEditParam) {
+        sessionStorage.removeItem('editingRecord');
+    }
+    var editingRecord = sessionStorage.getItem('editingRecord');
+    var isEditMode = hasEditParam || editingRecord;
+
+    if (!isEditMode) {
+        cargarCategoriasInmediatamente();
+    } else {
+        isPopulatingForm = true;
+    }
+
+    initializeForm().catch(function(e) { console.warn('initializeForm:', e); });
+    checkEditMode().catch(function(e) { console.warn('checkEditMode:', e); });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runFormInit);
+} else {
+    runFormInit();
+}
+
+// Delegación de eventos: botón del mapa (funciona aunque el script cargue tarde o falle antes)
+document.addEventListener('click', function(e) {
+    var el = e.target;
+    var btn = null;
+    if (el && el.id === 'selectLocationBtn') {
+        btn = el;
+    } else {
+        while (el && el !== document.body) {
+            if (el.id === 'selectLocationBtn') { btn = el; break; }
+            el = el.parentElement;
+        }
+    }
+    if (btn) {
+        e.preventDefault();
+        if (typeof openLocationModal === 'function') {
+            openLocationModal();
+        }
+    }
 });
 
 // También intentar cargar cuando la ventana esté completamente lista
 window.addEventListener('load', () => {
-    console.log('🚀 Ventana completamente cargada, verificando categorías...');
+
+    // NO cargar si estamos en modo edición
+    if (isPopulatingForm) {
+
+        return;
+    }
+    
     const categoriaSelect = document.getElementById('categoria');
     if (categoriaSelect && categoriaSelect.options.length <= 1) {
-        console.log('⚠️ No hay categorías, cargando de nuevo...');
+
         cargarCategoriasInmediatamente();
     }
 });
 
 // INTENTO ADICIONAL después de 1 segundo
 setTimeout(() => {
+    // NO cargar si estamos en modo edición
+    if (isPopulatingForm) {
+
+        return;
+    }
+    
     const select = document.getElementById('categoria');
     if (select && select.options.length <= 1) {
-        console.log('⚠️ Reintento después de 1 segundo...');
+
         cargarCategoriasInmediatamente();
     }
 }, 1000);
@@ -101,8 +285,7 @@ let formSubcategorias = [];
 
 // Inicializar formulario
 async function initializeForm() {
-    console.log('🔧 Inicializando formulario...');
-    
+
     // Establecer fecha por defecto (hoy)
     const fechaInput = document.getElementById('fecha');
     if (fechaInput && !fechaInput.value) {
@@ -110,38 +293,48 @@ async function initializeForm() {
         fechaInput.value = today;
     }
     
-    // Cargar categorías (ya se carga automáticamente arriba, pero por si acaso)
-    setTimeout(() => cargarCategorias(), 100);
+    // Cargar categorías al iniciar (y reintentar tras 300ms por si la API tarda)
+    if (!isPopulatingForm && window._isPopulatingForm !== true) {
+        cargarCategorias();
+        setTimeout(() => cargarCategorias(), 300);
+    }
     
     // Event listener para cambio de categoría
     const categoriaSelect = document.getElementById('categoria');
     if (categoriaSelect) {
-        categoriaSelect.addEventListener('change', function(e) {
+        // Guardar referencia al listener para poder removerlo temporalmente si es necesario
+        const changeHandler = function(e) {
             const categoriaId = e.target.value;
-            console.log('📌 Categoría seleccionada:', categoriaId);
+
             if (categoriaId) {
                 cargarSubcategorias(categoriaId);
             } else {
                 limpiarSubcategorias();
             }
-        });
+        };
+        categoriaSelect.addEventListener('change', changeHandler);
+        // Guardar referencia para poder removerla si es necesario
+        categoriaSelect._changeListener = changeHandler;
     }
 }
 
 // FUNCIÓN SIMPLE Y DIRECTA PARA CARGAR CATEGORÍAS
 async function cargarCategorias() {
-    console.log('🔄 cargarCategorias() llamada...');
+    // BLOQUEAR si estamos poblando el formulario Y ya hay categorías cargadas
+    if ((isPopulatingForm || window._isPopulatingForm === true) && formCategorias.length > 0) {
+
+        return true; // Retornar true para indicar que las categorías ya están disponibles
+    }
     
     const select = document.getElementById('categoria');
     if (!select) {
-        console.error('❌ No se encontró el select de categoría');
+
         return false;
     }
     
     try {
         const url = getApiUrl('get_categorias');
-        console.log('📡 Fetch a:', url);
-        
+
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -149,13 +342,43 @@ async function cargarCategorias() {
         }
         
         const resultado = await response.json();
-        console.log('📦 Respuesta:', resultado);
-        
-        if (resultado.success && resultado.categorias && Array.isArray(resultado.categorias) && resultado.categorias.length > 0) {
-            formCategorias = resultado.categorias;
-            console.log(`✅ ${formCategorias.length} categorías recibidas`);
+
+        formCategorias = (resultado.success && resultado.categorias && Array.isArray(resultado.categorias)) ? resultado.categorias : [];
+        if (formCategorias.length > 0) {
+
+            // IMPORTANTE: Guardar el valor actual ANTES de limpiar si estamos en modo edición
+            const valorActual = select.value;
+            const debeRestaurar = (isPopulatingForm || window._isPopulatingForm === true) && valorActual && valorActual !== '';
             
-            // LIMPIAR COMPLETAMENTE
+            // Si estamos en modo edición y ya hay un valor establecido, NO limpiar el select
+            // Solo agregar las opciones que faltan
+            if (debeRestaurar && select.options.length > 1) {
+
+                // Verificar que todas las categorías estén en las opciones
+                const opcionesExistentes = Array.from(select.options).map(opt => opt.value);
+                const categoriasFaltantes = formCategorias.filter(cat => !opcionesExistentes.includes(String(cat.id)));
+                
+                if (categoriasFaltantes.length > 0) {
+
+                    categoriasFaltantes.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.nombre;
+                        select.appendChild(opt);
+                    });
+                }
+                
+                // Asegurar que el valor sigue establecido
+                establecerValorSelectRobusto(select, valorActual);
+                return true;
+            }
+            
+            if (debeRestaurar) {
+
+                categoriaValueToRestore = valorActual;
+            }
+            
+            // LIMPIAR COMPLETAMENTE solo si no estamos en modo edición con valor establecido
             select.innerHTML = '';
             
             // Agregar opción por defecto
@@ -172,30 +395,50 @@ async function cargarCategorias() {
                 select.appendChild(opt);
             });
             
-            console.log(`✅✅✅ ${select.options.length} opciones en el select`);
-            console.log('📋 Nombres:', formCategorias.map(c => c.nombre).join(', '));
+            // RESTAURAR el valor si estábamos en modo edición
+            if (debeRestaurar && categoriaValueToRestore) {
+
+                // Usar múltiples métodos y esperar
+                establecerValorSelectRobusto(select, categoriaValueToRestore);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                establecerValorSelectRobusto(select, categoriaValueToRestore);
+                // Forzar actualización visual
+                select.style.display = 'none';
+                select.offsetHeight; // Trigger reflow
+                select.style.display = '';
+            }
             
-            // FORZAR ACTUALIZACIÓN
-            select.dispatchEvent(new Event('change'));
+            // NO disparar evento change automáticamente - esto puede limpiar subcategorías
+            // El evento change se disparará cuando el usuario cambie manualmente la categoría
+            // select.dispatchEvent(new Event('change'));
             
             return true;
-        } else {
-            console.error('❌ Respuesta inválida o vacía:', resultado);
-            return false;
         }
+        // Si no hay categorías, mostrar al menos la opción por defecto
+        select.innerHTML = '<option value="">Selecciona una categoría</option>';
+        if (formCategorias.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No hay categorías disponibles';
+            opt.disabled = true;
+            select.appendChild(opt);
+        }
+        return formCategorias.length > 0;
     } catch (error) {
-        console.error('❌ Error:', error);
+        const selectErr = document.getElementById('categoria');
+        if (selectErr) {
+            selectErr.innerHTML = '<option value="">Error al cargar. Reintenta.</option>';
+        }
         return false;
     }
 }
 
 // FUNCIÓN SIMPLE Y DIRECTA PARA CARGAR SUBCATEGORÍAS
 async function cargarSubcategorias(categoriaId) {
-    console.log('🔄 Cargando subcategorías para categoría:', categoriaId);
-    
+
     const select = document.getElementById('subcategoria');
     if (!select) {
-        console.error('❌ No se encontró el select de subcategoría');
+
         return;
     }
     
@@ -208,8 +451,7 @@ async function cargarSubcategorias(categoriaId) {
         // URL de la API
         const baseUrl = getApiUrl('get_subcategorias').split('?')[0];
         const url = `${baseUrl}?action=get_subcategorias&categoria_id=${categoriaId}`;
-        console.log('📡 Llamando a:', url);
-        
+
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -217,12 +459,10 @@ async function cargarSubcategorias(categoriaId) {
         }
         
         const resultado = await response.json();
-        console.log('📦 Respuesta recibida:', resultado);
-        
+
         if (resultado.success && resultado.subcategorias && Array.isArray(resultado.subcategorias)) {
             formSubcategorias = resultado.subcategorias;
-            console.log(`✅ Se recibieron ${formSubcategorias.length} subcategorías`);
-            
+
             // LIMPIAR Y LLENAR CON INNERHTML
             let opcionesHTML = '<option value="">Selecciona una subcategoría (opcional)</option>\n';
             
@@ -237,18 +477,15 @@ async function cargarSubcategorias(categoriaId) {
             select.innerHTML = opcionesHTML;
             select.disabled = false;
             
-            console.log(`✅✅✅ ${select.options.length} opciones agregadas al select de subcategorías`);
-            console.log('📋 Subcategorías:', formSubcategorias.map(s => s.nombre));
-            
             return true;
         } else {
-            console.error('❌ Respuesta inválida:', resultado);
+
             select.innerHTML = '<option value="">Sin subcategorías disponibles</option>';
             select.disabled = false;
             return false;
         }
     } catch (error) {
-        console.error('❌ Error al cargar subcategorías:', error);
+
         select.innerHTML = '<option value="">Error: ' + error.message + '</option>';
         select.disabled = false;
         return false;
@@ -270,14 +507,13 @@ function setupEventListeners() {
     // Función para obtener la URL de redirección según el origen
     function getRedirectUrl() {
         const fromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
-        console.log('🔍 Verificando origen - fromAdmin:', fromAdmin);
+
         if (fromAdmin) {
-            console.log('📍 Redirigiendo a admin.html#registros');
+
             return 'admin.html#registros';
         }
         // Marcar que viene de cancelación para que auth.js permita acceso
         sessionStorage.setItem('vieneDeCancelacion', 'true');
-        console.log('📍 Redirigiendo a index.html (marcado como cancelación)');
         return 'index.html';
     }
     
@@ -335,14 +571,22 @@ function setupEventListeners() {
 // Verificar modo edición
 async function checkEditMode() {
     const urlParams = new URLSearchParams(window.location.search);
+    const hasEditParam = urlParams.get('edit') === 'true';
+    // Si la URL no trae edit=true, es "nuevo registro": no usar datos de edición guardados
+    if (!hasEditParam) {
+        sessionStorage.removeItem('editingRecord');
+    }
     const editingRecord = sessionStorage.getItem('editingRecord');
     const fromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
     
     if (fromAdmin) {
-        console.log('🔐 Modo edición detectado desde panel de administración');
+
     }
     
-    if (urlParams.get('edit') === 'true' || editingRecord) {
+    if (hasEditParam || editingRecord) {
+        // MARCAR INMEDIATAMENTE que estamos poblando el formulario
+        isPopulatingForm = true;
+
         // Cambiar título del formulario
         const formTitle = document.getElementById('formTitle');
         if (formTitle) {
@@ -355,22 +599,21 @@ async function checkEditMode() {
         if (editingRecord) {
             try {
                 const record = JSON.parse(editingRecord);
-                console.log('📝 Modo edición activado. Registro:', record);
-                
+
                 // Asegurar que las categorías estén cargadas ANTES de poblar el formulario
                 if (formCategorias.length === 0) {
-                    console.log('🔄 Cargando categorías antes de poblar formulario...');
+
                     await cargarCategorias();
                     // Esperar un momento para que se rendericen las opciones
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
                 
                 await populateForm(record);
             } catch (error) {
-                console.error('Error al parsear registro de edición:', error);
+
             }
         } else {
-            console.warn('⚠️ Modo edición activado pero no hay registro en sessionStorage');
+
         }
     } else {
         // Asegurar que el título sea "Nuevo Registro" si no está en modo edición
@@ -380,66 +623,337 @@ async function checkEditMode() {
         }
         // Limpiar sessionStorage si no está en modo edición
         sessionStorage.removeItem('editingRecord');
+        isPopulatingForm = false;
     }
 }
 
 // Llenar formulario con datos existentes
 async function populateForm(record) {
+    // Marcar que estamos poblando el formulario INMEDIATAMENTE
+    isPopulatingForm = true;
+    window._isPopulatingForm = true;
+
+    // Guardar los IDs de categoría y subcategoría ANTES de cualquier operación
+    const categoriaIdToSet = record.categoria_id;
+    const subcategoriaIdToSet = record.subcategoria_id;
+
     // Cargar categorías primero si no están cargadas
     if (formCategorias.length === 0) {
+
         await cargarCategorias();
+        // Esperar un momento para que se rendericen completamente
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
     
+    // ESPERAR a que todas las operaciones asíncronas terminen
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Llenar categoría y subcategoría
-    if (record.categoria_id) {
-        console.log('📌 Estableciendo categoría:', record.categoria_id);
+    if (categoriaIdToSet) {
+
         const categoriaSelect = document.getElementById('categoria');
         if (categoriaSelect) {
             // Asegurar que las opciones estén cargadas
             if (categoriaSelect.options.length <= 1) {
-                console.log('⚠️ Categorías no cargadas, cargando ahora...');
+
                 await cargarCategorias();
-                await new Promise(resolve => setTimeout(resolve, 200));
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
             
-            // Establecer el valor de la categoría
-            categoriaSelect.value = record.categoria_id;
-            console.log('✅ Categoría establecida:', categoriaSelect.value);
+            // Verificar que la opción de categoría existe antes de establecerla
+            const categoriaOptionExists = Array.from(categoriaSelect.options).some(opt => opt.value == categoriaIdToSet);
+            if (!categoriaOptionExists) {
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // Reintentar cargar categorías
+                await cargarCategorias();
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
             
-            // Disparar evento change para cargar subcategorías
-            categoriaSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            // IMPORTANTE: Deshabilitar temporalmente el listener de change para evitar que limpie subcategorías
+            // Guardar el listener original si existe
+            const originalChangeHandler = categoriaSelect.onchange;
+            const originalEventListener = categoriaSelect._changeListener;
             
-            // Esperar a que carguen las subcategorías
-            await new Promise(resolve => setTimeout(resolve, 600));
+            // Remover el listener de addEventListener si existe
+            if (originalEventListener) {
+                categoriaSelect.removeEventListener('change', originalEventListener);
+            }
+            categoriaSelect.onchange = null;
+            
+            // IMPORTANTE: Guardar el valor en la variable global para que se restaure si algo lo limpia
+            categoriaValueToRestore = categoriaIdToSet;
+            
+            // INICIAR MONITOREO CONTINUO para restaurar automáticamente si se pierde
+            iniciarMonitoreoSelect('categoria', categoriaIdToSet, 'categoria');
+            
+            // Función para establecer categoría usando requestAnimationFrame (después del renderizado)
+            const establecerCategoriaConRAF = () => {
+                return new Promise((resolve) => {
+                    requestAnimationFrame(() => {
+                        establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+                        requestAnimationFrame(() => {
+                            establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+                            resolve(categoriaSelect.value == categoriaIdToSet);
+                        });
+                    });
+                });
+            };
+            
+            // Establecer usando función robusta - MÚLTIPLES INTENTOS AGRESIVOS CON RAF
+            let intentosCategoria = 0;
+            const maxIntentosCategoria = 15;
+            
+            // Primer intento inmediato
+            establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+            
+            // Intentos con requestAnimationFrame
+            while (intentosCategoria < maxIntentosCategoria) {
+                intentosCategoria++;
+                const establecido = await establecerCategoriaConRAF();
+                if (establecido) {
+
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            // Verificar que se estableció
+            if (categoriaSelect.value == categoriaIdToSet) {
+                const selectedOption = categoriaSelect.options[categoriaSelect.selectedIndex];
+
+            } else {
+
+            }
+            
+            // Verificar múltiples veces después de establecer (con RAF también)
+            for (let i = 0; i < 15; i++) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                if (categoriaSelect.value != categoriaIdToSet) {
+
+                    await establecerCategoriaConRAF();
+                    // También forzar reflow visual
+                    categoriaSelect.style.display = 'none';
+                    categoriaSelect.offsetHeight;
+                    categoriaSelect.style.display = '';
+                }
+            }
+
+            // Verificación visual final y FORZAR actualización visual múltiples veces
+            const selectedOption = categoriaSelect.options[categoriaSelect.selectedIndex];
+            if (selectedOption && selectedOption.value == categoriaIdToSet) {
+
+                // Forzar actualización visual múltiples veces para asegurar que se muestre
+                for (let i = 0; i < 5; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+                    // Forzar reflow visual
+                    categoriaSelect.style.display = 'none';
+                    categoriaSelect.offsetHeight; // Trigger reflow
+                    categoriaSelect.style.display = '';
+                }
+
+            } else {
+
+                // ÚLTIMO INTENTO DESESPERADO: Forzar directamente
+                const option = Array.from(categoriaSelect.options).find(opt => opt.value == categoriaIdToSet);
+                if (option) {
+
+                    Array.from(categoriaSelect.options).forEach(opt => opt.selected = false);
+                    option.selected = true;
+                    categoriaSelect.selectedIndex = Array.from(categoriaSelect.options).indexOf(option);
+                    categoriaSelect.value = categoriaIdToSet;
+                    // Forzar actualización visual múltiples veces
+                    for (let i = 0; i < 3; i++) {
+                        categoriaSelect.style.display = 'none';
+                        categoriaSelect.offsetHeight;
+                        categoriaSelect.style.display = '';
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                    // Verificar nuevamente
+                    const finalCheck = categoriaSelect.options[categoriaSelect.selectedIndex];
+                    if (finalCheck && finalCheck.value == categoriaIdToSet) {
+
+                    } else {
+
+                    }
+                }
+            }
+            
+            // Cargar subcategorías manualmente SIN disparar evento change (ANTES de restaurar el handler)
+
+            await cargarSubcategorias(categoriaIdToSet);
+            
+            // ESPERAR después de cargar subcategorías y FORZAR nuevamente el valor de categoría
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+            
+            // Restaurar el handler DESPUÉS de establecer el valor y cargar subcategorías
+            categoriaSelect.onchange = originalChangeHandler;
+            if (originalEventListener) {
+                categoriaSelect.addEventListener('change', originalEventListener);
+            }
+            
+            // FORZAR nuevamente después de restaurar el handler
+            await new Promise(resolve => setTimeout(resolve, 200));
+            establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+            
+            // Esperar a que se carguen completamente las subcategorías
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Verificar que las subcategorías se cargaron
             const subcategoriaSelect = document.getElementById('subcategoria');
-            if (subcategoriaSelect && subcategoriaSelect.options.length > 1) {
-                if (record.subcategoria_id) {
-                    console.log('📌 Estableciendo subcategoría:', record.subcategoria_id);
-                    subcategoriaSelect.value = record.subcategoria_id;
-                    console.log('✅ Subcategoría establecida:', subcategoriaSelect.value);
-                    
-                    // Verificar que se estableció correctamente
-                    if (subcategoriaSelect.value != record.subcategoria_id) {
-                        console.warn('⚠️ La subcategoría no se estableció correctamente. Reintentando...');
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                        subcategoriaSelect.value = record.subcategoria_id;
+            if (subcategoriaSelect) {
+
+                if (subcategoriaSelect.options.length > 1) {
+                    if (subcategoriaIdToSet) {
+
+                        // Verificar que la opción existe antes de establecerla
+                        const optionExists = Array.from(subcategoriaSelect.options).some(opt => opt.value == subcategoriaIdToSet);
+                        if (optionExists) {
+                            // Guardar valor para restauración
+                            subcategoriaValueToRestore = subcategoriaIdToSet;
+                            
+                            // INICIAR MONITOREO CONTINUO para restaurar automáticamente si se pierde
+                            iniciarMonitoreoSelect('subcategoria', subcategoriaIdToSet, 'subcategoria');
+                            
+                            // Establecer usando función robusta global
+                            if (!establecerValorSelectRobusto(subcategoriaSelect, subcategoriaIdToSet)) {
+
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                                establecerValorSelectRobusto(subcategoriaSelect, subcategoriaIdToSet);
+                            }
+                            
+                            await new Promise(resolve => setTimeout(resolve, 100));
+
+                            // Verificar múltiples veces
+                            for (let i = 0; i < 5; i++) {
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                                if (subcategoriaSelect.value != subcategoriaIdToSet) {
+
+                                    establecerValorSelectRobusto(subcategoriaSelect, subcategoriaIdToSet);
+                                }
+                            }
+                            
+                            // Verificación visual final
+                            const selectedSubOption = subcategoriaSelect.options[subcategoriaSelect.selectedIndex];
+                            if (selectedSubOption && selectedSubOption.value == subcategoriaIdToSet) {
+
+                            } else {
+
+                            }
+                        } else {
+
+                        }
+                    } else {
+
+                    }
+                } else {
+
+                    await cargarSubcategorias(categoriaIdToSet);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    if (subcategoriaIdToSet && subcategoriaSelect.options.length > 1) {
+                        const optionExists = Array.from(subcategoriaSelect.options).some(opt => opt.value == subcategoriaIdToSet);
+                        if (optionExists) {
+                            subcategoriaSelect.value = subcategoriaIdToSet;
+                            const subcategoriaIndex = Array.from(subcategoriaSelect.options).findIndex(opt => opt.value == subcategoriaIdToSet);
+                            if (subcategoriaIndex !== -1) {
+                                subcategoriaSelect.selectedIndex = subcategoriaIndex;
+                            }
+                            subcategoriaSelect.dispatchEvent(new Event('input', { bubbles: true }));
+                            await new Promise(resolve => setTimeout(resolve, 100));
+
+                        }
                     }
                 }
             } else {
-                console.warn('⚠️ Las subcategorías no se cargaron, intentando cargar manualmente...');
-                await cargarSubcategorias(record.categoria_id);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                if (record.subcategoria_id && subcategoriaSelect) {
-                    subcategoriaSelect.value = record.subcategoria_id;
-                }
+
             }
+            
+            // FUNCIÓN AUXILIAR para establecer categoría de forma robusta
+            const establecerCategoriaRobusta = (select, value) => {
+                if (!select || !value) return false;
+                
+                // Método 1: Usar value
+                select.value = value;
+                
+                // Método 2: Usar selectedIndex
+                const index = Array.from(select.options).findIndex(opt => opt.value == value);
+                if (index !== -1) {
+                    select.selectedIndex = index;
+                }
+                
+                // Método 3: Establecer directamente en la opción
+                const option = Array.from(select.options).find(opt => opt.value == value);
+                if (option) {
+                    option.selected = true;
+                }
+                
+                // Método 4: Forzar eventos
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Verificar resultado
+                return select.value == value;
+            };
+            
+            // VERIFICACIÓN FINAL: Asegurar que la categoría sigue establecida después de todas las operaciones
+            // Esperar más tiempo para que todos los timeouts y eventos terminen
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Verificar y restaurar si es necesario usando método robusto
+            if (!establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet)) {
+
+                categoriaValueToRestore = categoriaIdToSet; // Actualizar variable global
+                await new Promise(resolve => setTimeout(resolve, 200));
+                establecerValorSelectRobusto(categoriaSelect, categoriaIdToSet);
+            }
+            
+            // Confirmar visualmente
+            const finalSelectedOption = categoriaSelect.options[categoriaSelect.selectedIndex];
+            if (finalSelectedOption && finalSelectedOption.value == categoriaIdToSet) {
+
+            } else {
+
+            }
+            
+            // ÚLTIMA VERIFICACIÓN después de que todos los timeouts hayan terminado (múltiples verificaciones)
+            [2000, 3000, 4000, 5000, 6000, 7000, 8000].forEach(delay => {
+                setTimeout(() => {
+                    const categoriaSelectFinal = document.getElementById('categoria');
+                    if (categoriaSelectFinal) {
+                        if (categoriaSelectFinal.value != categoriaIdToSet) {
+                            establecerValorSelectRobusto(categoriaSelectFinal, categoriaIdToSet);
+                            categoriaValueToRestore = categoriaIdToSet;
+                            // Forzar reflow visual
+                            categoriaSelectFinal.style.display = 'none';
+                            categoriaSelectFinal.offsetHeight;
+                            categoriaSelectFinal.style.display = '';
+                        } else {
+                            // Aunque el valor es correcto, forzar actualización visual
+                            const selectedOption = categoriaSelectFinal.options[categoriaSelectFinal.selectedIndex];
+                            if (selectedOption && selectedOption.value == categoriaIdToSet) {
+                                // Forzar reflow visual para asegurar que se muestre
+                                categoriaSelectFinal.style.display = 'none';
+                                categoriaSelectFinal.offsetHeight;
+                                categoriaSelectFinal.style.display = '';
+                            }
+                        }
+                    }
+                }, delay);
+            });
+            
+            // Limpiar flag después de un tiempo razonable (15 segundos para dar tiempo a todas las verificaciones)
+            setTimeout(() => {
+                isPopulatingForm = false;
+
+            }, 15000);
         } else {
-            console.error('❌ No se encontró el select de categoría');
+            void 0;
         }
     } else {
-        console.warn('⚠️ El registro no tiene categoria_id');
+        void 0;
     }
     
     // Campos generales
@@ -732,7 +1246,7 @@ async function handleMediaUpload(files) {
                 });
             }
         } catch (error) {
-            console.error('Error procesando archivo:', file.name, error);
+
             alert(`Error al procesar ${file.name}. Por favor, intenta con otro archivo.`);
         }
     }
@@ -811,52 +1325,71 @@ window.removeMedia = function(index) {
     displayMediaPreview();
 };
 
-// Abrir modal de ubicación
+// Abrir modal de ubicación (expuesta en window para delegación e inline)
 function openLocationModal() {
-    const modal = document.getElementById('locationModal');
+    var modal = document.getElementById('locationModal');
+    if (!modal) {
+        console.warn('openLocationModal: no se encontró #locationModal');
+        return;
+    }
     const latInput = document.getElementById('latitud');
     const lngInput = document.getElementById('longitud');
-    
-    // Inicializar mapa de Leaflet si no existe
-    if (!locationMap) {
-        initializeLocationMap();
-    }
-    
-    // Si hay coordenadas en el formulario, usarlas
-    if (latInput.value && lngInput.value) {
-        const lat = parseFloat(latInput.value);
-        const lng = parseFloat(lngInput.value);
-        if (!isNaN(lat) && !isNaN(lng)) {
-            updateLocationMarker(lat, lng);
-        }
-    }
-    
+
+    // Mostrar el modal PRIMERO para que el contenedor del mapa tenga dimensiones (Leaflet falla si está oculto)
     modal.classList.add('active');
-    
-    // Forzar actualización del tamaño del mapa después de mostrar el modal
-    setTimeout(() => {
-        if (locationMap) {
-            locationMap.invalidateSize();
+
+    if (!locationMap) {
+        // Inicializar mapa en el siguiente tick, con el modal ya visible
+        setTimeout(function() {
+            initializeLocationMap();
+            if (latInput && lngInput && latInput.value && lngInput.value) {
+                const lat = parseFloat(latInput.value);
+                const lng = parseFloat(lngInput.value);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    updateLocationMarker(lat, lng);
+                }
+            }
+            if (locationMap) {
+                locationMap.invalidateSize();
+            }
+        }, 50);
+    } else {
+        if (latInput && lngInput && latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updateLocationMarker(lat, lng);
+            }
         }
-    }, 100);
+        setTimeout(function() {
+            if (locationMap) {
+                locationMap.invalidateSize();
+            }
+        }, 100);
+    }
 }
+window.openLocationModal = openLocationModal;
 
 // Inicializar mapa de Leaflet para selección de ubicación
 function initializeLocationMap() {
     if (typeof L === 'undefined') {
-        console.error('Leaflet no está cargado');
         return;
     }
-    
     const mapContainer = document.getElementById('locationMap');
     if (!mapContainer) {
-        console.error('Contenedor del mapa no encontrado');
         return;
     }
-    
+    try {
+        initLocationMapCore();
+    } catch (err) {
+        console.warn('Error al inicializar el mapa:', err);
+    }
+}
+
+function initLocationMapCore() {
     // Coordenadas del centro de Tamaulipas
     const tamaulipasCenter = [23.7, -99.0];
-    
+
     // Crear el mapa
     locationMap = L.map('locationMap', {
         center: tamaulipasCenter,
@@ -1160,8 +1693,7 @@ function fillFormAutomatically() {
     
     const longitudInput = document.getElementById('longitud');
     if (longitudInput) longitudInput.value = longitudAleatoria;
-    
-    
+
     const observacionesInput = document.getElementById('observaciones');
     if (observacionesInput) observacionesInput.value = observacionesAleatorias;
     
@@ -1211,17 +1743,9 @@ function fillFormAutomatically() {
 // Manejar envío del formulario
 async function handleFormSubmit(e) {
     e.preventDefault();
-    
-    console.log('🚀 ===== INICIO handleFormSubmit =====');
-    console.log('🚀 Evento de submit capturado');
-    
+
     // Verificar si viene del panel de administración
     const fromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
-    
-    console.log('🔍 ===== INICIO VERIFICACIÓN =====');
-    console.log('🔍 fromAdmin:', fromAdmin);
-    console.log('🔍 adminAuthSystem disponible:', typeof window.adminAuthSystem !== 'undefined');
-    console.log('🔍 sessionStorage editingFromAdmin:', sessionStorage.getItem('editingFromAdmin'));
     
     // Obtener usuario actual (puede ser usuario normal o admin)
     let currentUser = null;
@@ -1229,16 +1753,13 @@ async function handleFormSubmit(e) {
     
     // PRIMERO: Intentar obtener desde adminAuthSystem si viene del admin
     if (fromAdmin) {
-        console.log('🔍 Intentando obtener usuario desde adminAuthSystem...');
-        
+
         if (window.adminAuthSystem) {
             // Método 1: isAuthenticated + getCurrentAdmin
             const isAuth = window.adminAuthSystem.isAuthenticated();
-            console.log('🔍 isAuthenticated():', isAuth);
             
             if (isAuth) {
                 const admin = window.adminAuthSystem.getCurrentAdmin();
-                console.log('🔍 getCurrentAdmin():', admin);
                 if (admin) {
                     currentUser = {
                         id: admin.id,
@@ -1247,15 +1768,12 @@ async function handleFormSubmit(e) {
                         rol: admin.rol || 'admin'
                     };
                     isAdmin = true;
-                    console.log('✅ Usuario obtenido desde getCurrentAdmin():', currentUser);
                 }
             }
             
             // Método 2: Si no funcionó, intentar getSession directamente
             if (!currentUser) {
-                console.log('🔍 Intentando obtener desde getSession()...');
                 const session = window.adminAuthSystem.getSession();
-                console.log('🔍 getSession():', session);
                 if (session && session.admin) {
                     currentUser = {
                         id: session.admin.id,
@@ -1264,24 +1782,22 @@ async function handleFormSubmit(e) {
                         rol: session.admin.rol || 'admin'
                     };
                     isAdmin = true;
-                    console.log('✅ Usuario obtenido desde getSession():', currentUser);
                 }
             }
         } else {
-            console.log('⚠️ adminAuthSystem no está disponible');
+
         }
         
         // Método 3: Si aún no hay usuario, leer directamente desde localStorage
         if (!currentUser) {
-            console.log('🔍 Intentando leer directamente desde localStorage...');
+
             const adminSessionKey = 'admin_session';
             const adminSessionData = localStorage.getItem(adminSessionKey);
-            console.log('🔍 localStorage.getItem("admin_session"):', adminSessionData ? 'Existe' : 'No existe');
             
             if (adminSessionData) {
                 try {
                     const session = JSON.parse(adminSessionData);
-                    console.log('🔍 Sesión parseada:', session);
+
                     if (session && session.admin) {
                         currentUser = {
                             id: session.admin.id,
@@ -1290,10 +1806,10 @@ async function handleFormSubmit(e) {
                             rol: session.admin.rol || 'admin'
                         };
                         isAdmin = true;
-                        console.log('✅ Usuario obtenido desde localStorage directo:', currentUser);
+
                     }
                 } catch (error) {
-                    console.error('❌ Error al parsear localStorage:', error);
+
                 }
             }
         }
@@ -1301,23 +1817,19 @@ async function handleFormSubmit(e) {
     
     // SEGUNDO: Si no se obtuvo del admin, intentar usuario normal
     if (!currentUser && window.authSystem) {
-        console.log('🔍 Intentando obtener usuario normal...');
+
         currentUser = window.authSystem.getCurrentUser();
         if (currentUser) {
-            console.log('✅ Usuario normal obtenido:', currentUser);
+
         }
     }
     
     // TERCERO: Si aún no hay usuario, mostrar error
     if (!currentUser) {
-        console.error('❌ ===== ERROR: NO SE PUDO OBTENER USUARIO =====');
-        console.error('❌ fromAdmin:', fromAdmin);
-        console.error('❌ adminAuthSystem disponible:', typeof window.adminAuthSystem !== 'undefined');
+
         if (window.adminAuthSystem) {
-            console.error('❌ isAuthenticated():', window.adminAuthSystem.isAuthenticated());
-            console.error('❌ getSession():', window.adminAuthSystem.getSession());
+            // Admin system disponible
         }
-        console.error('❌ localStorage admin_session:', localStorage.getItem('admin_session'));
         
         if (fromAdmin) {
             alert('Tu sesión de administrador ha expirado. Por favor, inicia sesión nuevamente desde el panel de administración.');
@@ -1328,54 +1840,59 @@ async function handleFormSubmit(e) {
             return;
         }
     }
-    
-    console.log('✅ ===== USUARIO FINAL OBTENIDO =====');
-    console.log('✅ currentUser:', currentUser);
-    console.log('✅ isAdmin:', isAdmin);
-    
+
     // Verificar que currentUser tenga los datos necesarios
     if (!currentUser || !currentUser.id) {
-        console.error('❌ ERROR CRÍTICO: currentUser no tiene id');
+
         alert('Error: No se pudo obtener la información del usuario. Por favor, recarga la página.');
         return;
     }
-    
-    console.log('✅ Usuario válido, continuando con el guardado...');
-    
+
     // Verificar si es edición
     const editingRecord = sessionStorage.getItem('editingRecord');
     const isEditing = editingRecord !== null;
     
-    // Obtener categoría seleccionada
-    const categoriaId = document.getElementById('categoria')?.value;
-    const subcategoriaId = document.getElementById('subcategoria')?.value || null;
-    
+    // Obtener categoría seleccionada (sin optional chaining para compatibilidad)
+    const catEl = document.getElementById('categoria');
+    const subEl = document.getElementById('subcategoria');
+    const categoriaId = catEl ? catEl.value : null;
+    const subcategoriaId = (subEl && subEl.value) ? subEl.value : null;
+
     if (!categoriaId) {
         alert('Por favor selecciona una categoría');
         return;
     }
-    
+
+    function val(id) {
+        var el = document.getElementById(id);
+        return (el && el.value) ? el.value : null;
+    }
+    function valTrim(id) {
+        var el = document.getElementById(id);
+        return (el && el.value && typeof el.value.trim === 'function') ? el.value.trim() : null;
+    }
+
     // Construir formData con todos los campos del catálogo
     const formData = {
         categoria_id: parseInt(categoriaId),
         subcategoria_id: subcategoriaId ? parseInt(subcategoriaId) : null,
         fecha: document.getElementById('fecha').value,
-        hora: document.getElementById('hora')?.value || null,
-        responsable: document.getElementById('responsable')?.value.trim() || null,
-        brigada: document.getElementById('brigada')?.value.trim() || null,
+        hora: val('hora'),
+        responsable: valTrim('responsable'),
+        brigada: valTrim('brigada'),
         latitud: parseFloat(document.getElementById('latitud').value),
         longitud: parseFloat(document.getElementById('longitud').value),
-        comunidad: document.getElementById('comunidad')?.value.trim() || null,
-        sitio: document.getElementById('sitio')?.value.trim() || null,
-        tipo_actividad: document.getElementById('tipo_actividad')?.value.trim() || null,
-        descripcion_breve: document.getElementById('descripcion_breve')?.value.trim() || null,
-        observaciones: document.getElementById('observaciones')?.value.trim() || null,
-        materiales_utilizados: document.getElementById('materiales_utilizados')?.value.trim() || null,
-        numero_participantes: document.getElementById('numero_participantes')?.value ? parseInt(document.getElementById('numero_participantes').value) : null,
-        notas: document.getElementById('notas')?.value.trim() || null,
+        comunidad: valTrim('comunidad'),
+        sitio: valTrim('sitio'),
+        tipo_actividad: valTrim('tipo_actividad'),
+        descripcion_breve: valTrim('descripcion_breve'),
+        observaciones: valTrim('observaciones'),
+        materiales_utilizados: valTrim('materiales_utilizados'),
+        numero_participantes: val('numero_participantes') ? parseInt(val('numero_participantes'), 10) : null,
+        notas: valTrim('notas'),
         // Campos originales (opcionales)
-        nombre: document.getElementById('nombre')?.value.trim() || null,
-        especie: document.getElementById('especie')?.value.trim() || null,
+        nombre: valTrim('nombre'),
+        especie: valTrim('especie'),
         media: selectedMedia.map(m => ({
             type: m.type,
             data: m.data, // Archivo comprimido/original
@@ -1389,12 +1906,11 @@ async function handleFormSubmit(e) {
         formData.id = editingData.id;
         // Preservar el usuario_id original del registro (importante para admins)
         formData.usuario_id = editingData.usuario_id || currentUser.id;
-        console.log('✏️ Modo edición - ID del registro:', formData.id);
-        console.log('✏️ Usuario ID original:', formData.usuario_id);
+
     } else {
         // En modo creación, usar el usuario actual
         formData.usuario_id = currentUser.id;
-        console.log('➕ Modo creación - Nuevo registro');
+
     }
     
     // Validación
@@ -1418,9 +1934,7 @@ async function handleFormSubmit(e) {
         // Usar la nueva API de registros ambientales
         const url = getApiUrl('save_registro_ambiental');
         const method = isEditing ? 'PUT' : 'POST';
-        
-        console.log('📤 Enviando datos:', formData);
-        
+
         const response = await fetch(url, {
             method: method,
             headers: {
@@ -1428,19 +1942,15 @@ async function handleFormSubmit(e) {
             },
             body: JSON.stringify(formData)
         });
-        
-        console.log('📥 Status de respuesta:', response.status);
-        
+
         const responseText = await response.text();
-        console.log('📄 Respuesta completa:', responseText);
-        
+
         let data;
         try {
             data = JSON.parse(responseText);
-            console.log('📦 Datos parseados:', data);
+
         } catch (parseError) {
-            console.error('❌ Error al parsear JSON:', parseError);
-            console.error('❌ Texto recibido:', responseText);
+
             alert('Error: Respuesta inválida del servidor. Revisa la consola.');
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
@@ -1448,8 +1958,7 @@ async function handleFormSubmit(e) {
         }
         
         if (data.success) {
-            console.log('✅ Registro guardado exitosamente:', data.record);
-            
+
             // Verificar si viene del panel de administración
             const fromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
             
@@ -1459,20 +1968,19 @@ async function handleFormSubmit(e) {
             
             if (fromAdmin) {
                 // Si viene del admin, regresar al panel sin alert y activar pestaña de registros
-                console.log('✅ Guardado desde admin, redirigiendo a admin.html');
+
                 // NO eliminar editingFromAdmin aquí - se eliminará al llegar al admin
                 // Limpiar editingRecord
                 sessionStorage.removeItem('editingRecord');
                 window.location.href = 'admin.html#registros';
             } else {
-                console.log('✅ Guardado desde usuario, redirigiendo a index.html');
+
                 // Si viene del perfil usuario, mostrar alert y redirigir
                 alert('Registro guardado exitosamente');
                 window.location.href = 'index.html';
             }
         } else {
-            console.error('❌ Error al guardar:', data.message);
-            
+
             // Manejar contenido ofensivo de forma especial
             if (data.contenido_ofensivo) {
                 let mensaje = '🚫 CONTENIDO RECHAZADO\n\n';
@@ -1493,8 +2001,7 @@ async function handleFormSubmit(e) {
             submitBtn.textContent = originalText;
         }
     } catch (error) {
-        console.error('❌ Error completo:', error);
-        console.error('❌ Stack:', error.stack);
+
         alert('Error de conexión: ' + error.message + '\nRevisa la consola para más detalles.');
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;

@@ -24,20 +24,20 @@ const urlsToCache = [
 
 // Evento de instalación
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando Service Worker...');
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Cache abierto, agregando archivos estáticos');
+
         // Cachear archivos críticos, pero no fallar si algunos fallan
         return cache.addAll(urlsToCache).catch((error) => {
-          console.warn('[SW] Algunos archivos no se pudieron cachear:', error);
+
           // Continuar aunque algunos archivos fallen
           return Promise.resolve();
         });
       })
       .then(() => {
-        console.log('[SW] Service Worker instalado correctamente');
+
         // Forzar activación inmediata
         return self.skipWaiting();
       })
@@ -46,21 +46,21 @@ self.addEventListener('install', (event) => {
 
 // Evento de activación
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando Service Worker...');
+
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           // Eliminar caches antiguos
           if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-            console.log('[SW] Eliminando cache antiguo:', cacheName);
+
             return caches.delete(cacheName);
           }
         })
       );
     })
     .then(() => {
-      console.log('[SW] Service Worker activado');
+
       // Tomar control de todas las páginas inmediatamente
       return self.clients.claim();
     })
@@ -89,7 +89,7 @@ self.addEventListener('fetch', (event) => {
           // Si falla la red, intentar cache runtime como último recurso
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
-              console.log('[SW] Usando respuesta cacheada de API:', event.request.url);
+
               return cachedResponse;
             }
             // Si no hay cache, devolver error
@@ -115,7 +115,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request)
         .then((cachedResponse) => {
           if (cachedResponse) {
-            console.log('[SW] Sirviendo desde cache:', event.request.url);
+
             return cachedResponse;
           }
           
@@ -172,8 +172,7 @@ self.addEventListener('fetch', (event) => {
 
 // Manejo de mensajes desde la app
 self.addEventListener('message', (event) => {
-  console.log('[SW] Mensaje recibido:', event.data);
-  
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
@@ -189,13 +188,13 @@ self.addEventListener('message', (event) => {
 
 // Manejo de notificaciones push (para implementación futura)
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification recibida');
+
   // Implementar lógica de notificaciones push aquí
 });
 
 // Manejo de clics en notificaciones
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notificación clickeada');
+
   event.notification.close();
   // Abrir la app cuando se hace clic en la notificación
   event.waitUntil(

@@ -1,76 +1,74 @@
 /* Panel de Administración */
 
-/* Header Actions - Botones del header */
-.header-actions {
-    display: flex;
+/* Header admin: no recortar el dropdown */
+.header.teal-header {
+    overflow: visible !important;
+    padding-right: 0.75rem !important;
+}
+/* Header: título a la izquierda, perfil en la esquina superior derecha (donde el círculo) */
+.header.teal-header .header-content {
+    display: flex !important;
+    flex-wrap: nowrap;
+    justify-content: space-between;
     align-items: center;
+    width: 100% !important;
+    max-width: 100%;
+    min-height: 3rem;
+    position: relative;
     gap: 1rem;
 }
-
-.user-name {
-    font-size: 0.95rem;
-    font-weight: 500;
-    margin-right: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 20px;
-    backdrop-filter: blur(10px);
+.header.teal-header .header-content .header-title {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 3rem;
+}
+/* Perfil (Cargando...) en la esquina superior derecha del header */
+.header.teal-header .header-content .profile-dropdown-wrapper {
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
 }
 
-.btn-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    border: none;
-    border-radius: 25px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(10px);
+/* Menú: posición base; al abrir, JS fija top/right para alinearlo con el botón */
+#adminProfileDropdown,
+div#adminProfileDropdown.profile-dropdown {
+    position: absolute;
+    top: 100%;
+    left: auto;
+    right: 0;
+    bottom: auto;
+    margin-top: 0.5rem;
+    margin-left: 0;
+    margin-right: 0;
+    width: 240px;
+    min-width: 200px;
+    max-width: calc(100vw - 2rem);
+    z-index: 999999 !important;
+    transform-origin: top right !important;
+    box-sizing: border-box !important;
 }
-
-.btn-header .btn-icon {
-    font-size: 1.1rem;
-    display: inline-block;
-    transition: transform 0.3s ease;
+#adminProfileDropdown:not(.is-open) {
+    transform: translateY(-6px) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
-
-.btn-header:hover .btn-icon {
-    transform: scale(1.2);
+#adminProfileDropdown.is-open {
+    position: fixed !important;
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
-
-.btn-back {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-    color: #2c7a7b;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.btn-back:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 249, 1) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(44, 122, 123, 0.3);
-    color: #1a5f5f;
-}
-
-.btn-logout-admin {
-    background: linear-gradient(135deg, rgba(220, 53, 69, 0.9) 0%, rgba(200, 35, 51, 0.9) 100%);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.btn-logout-admin:hover {
-    background: linear-gradient(135deg, rgba(220, 53, 69, 1) 0%, rgba(200, 35, 51, 1) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
-.btn-header:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+/* Flecha que une el menú con el botón */
+#adminProfileDropdown::before {
+    display: block !important;
+    top: -7px !important;
+    bottom: auto !important;
+    right: 22px !important;
+    left: auto !important;
+    transform: rotate(45deg) !important;
 }
 
 .admin-main {
@@ -234,6 +232,15 @@
 #btnPreviewCharts:active {
     transform: translateY(0);
     box-shadow: 0 2px 6px rgba(128, 90, 213, 0.3) !important;
+}
+
+.btn-quick-action:hover {
+    background: #e6fffa !important;
+    border-color: #2c7a7b !important;
+    color: #234e52 !important;
+}
+.btn-quick-action:active {
+    transform: scale(0.98);
 }
 
 .chart-card {
@@ -740,15 +747,20 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Responsive */
+/* Responsive e iOS */
 @media (max-width: 768px) {
     .admin-nav {
         padding: 1rem;
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
     }
     
     .nav-tab {
         padding: 0.5rem 1rem;
         font-size: 0.9rem;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
     }
     
     .stats-grid {
@@ -765,6 +777,17 @@
     
     .table-container {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
+    
+    .admin-main {
+        padding: 1rem;
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* Header admin en iOS: safe area superior */
+.header.teal-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
 }
 

@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Chat de Ejidos - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a5f3d 0%, #2e7d32 50%, #4caf50 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Contenedor Principal: fallback sólido para Android WebView (backdrop-filter falla en muchos dispositivos) */
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        @supports (backdrop-filter: blur(10px)) {
+            .chat-container {
+                backdrop-filter: blur(10px);
+                background: rgba(255, 255, 255, 0.05);
+            }
+        }
+        
+        /* Sidebar - Lista de Grupos: fallback para Android */
+        .sidebar {
+            width: 380px;
+            background: rgba(255, 255, 255, 0.98);
+        }
+        @supports (backdrop-filter: blur(20px)) {
+            .sidebar {
+                backdrop-filter: blur(20px);
+                background: rgba(255, 255, 255, 0.95);
+            }
+        }
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 30px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #43a047 100%);
+            color: white;
+            padding: 30px 25px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .sidebar-header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4caf50, #81c784);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+        
+        .sidebar-title {
+            flex: 1;
+        }
+        
+        .sidebar-title h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-title p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        .btn-volver-inicio {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.25);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 2px solid rgba(255,255,255,0.4);
+            transition: all 0.25s;
+        }
+        .btn-volver-inicio:hover {
+            background: rgba(255,255,255,0.35);
+            border-color: rgba(255,255,255,0.6);
+        }
+        
+        /* Buscador moderno */
+        .search-box {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            background: white;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23999"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: 15px center;
+            background-size: 20px;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+        }
+        
+        /* Lista de Grupos como tarjetas modernas */
+        .grupos-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+        }
+        
+        .grupo-card {
+            background: white;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-radius: 18px;
+            cursor: pointer;
+            display: flex;
+            gap: 15px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .grupo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #2e7d32, #4caf50);
+            transform: scaleY(0);
+            transition: transform 0.3s;
+        }
+        
+        .grupo-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.15);
+        }
+        
+        .grupo-card:hover::before {
+            transform: scaleY(1);
+        }
+        
+        .grupo-card.active {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border-color: #4caf50;
+            transform: translateX(5px);
+        }
+        
+        .grupo-card.active::before {
+            transform: scaleY(1);
+        }
+        
+        .grupo-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #2e7d32, #66bb6a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+        
+        .grupo-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .grupo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .grupo-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #1b5e20;
+        }
+        
+        .grupo-time {
+            font-size: 0.75rem;
+            color: #81c784;
+            font-weight: 600;
+        }
+        
+        .grupo-last-message {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .unread-badge {
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            color: white;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+        }
+        
+        /* Área de Chat con diseño innovador */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Patrón de fondo decorativo */
+        .chat-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        /* Placeholder elegante */
+        .chat-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            z-index: 1;
+        }
+        
+        .chat-placeholder-icon {
+            font-size: 6rem;
+            margin-bottom: 25px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .chat-placeholder h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .chat-placeholder p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Header del Chat: fallback para Android */
+        .chat-header {
+            background: #fff;
+        }
+        @supports (backdrop-filter: blur(20px)) {
+            .chat-header {
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(20px);
+            }
+        }
+            padding: 20px 30px;
+            display: none;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-bottom: 3px solid transparent;
+            border-image: linear-gradient(to right, #2e7d32, #66bb6a) 1;
+            z-index: 10;
+        }
+        
+        .chat-header-avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43a047, #66bb6a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4);
+        }
+        
+        .chat-header-info {
+            flex: 1;
+        }
+        
+        .chat-header-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1b5e20;
+            margin-bottom: 4px;
+        }
+        
+        .chat-header-subtitle {
+            font-size: 0.9rem;
+            color: #66bb6a;
+            font-weight: 500;
+        }
+        
+        /* Mensajes con diseño innovador */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: none;
+            z-index: 1;
+        }
+        
+        .messages-container.active {
+            display: block;
+        }
+        
+        .message-date {
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .message-date span {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #2e7d32;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 18px;
+            animation: messageSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .message.own {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 20px;
+            position: relative;
+        }
+        @supports (backdrop-filter: blur(10px)) {
+            .message-bubble { backdrop-filter: blur(10px); }
+        }
+        
+        .message.other .message-bubble {
+            background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        
+        .message.own .message-bubble {
+            background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            color: white;
+        }
+        
+        .message-sender {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #2e7d32;
+            margin-bottom: 5px;
+        }
+        
+        .message.own .message-sender {
+            display: none;
+        }
+        
+        .message-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        
+        .message.other .message-text {
+            color: #333;
+        }
+        
+        .message.own .message-text {
+            color: white;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            text-align: right;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            opacity: 0.8;
+        }
+        
+        .message.other .message-time {
+            color: #999;
+        }
+        
+        .message.own .message-time {
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .message-adjunto { margin-bottom: 8px; }
+        .chat-img { max-width: 100%; max-height: 280px; border-radius: 12px; display: block; }
+        .chat-video { max-width: 100%; max-height: 280px; border-radius: 12px; }
+        
+        /* Input de Mensaje: fallback para Android */
+        .message-input {
+            background: #fff;
+        }
+        @supports (backdrop-filter: blur(20px)) {
+            .message-input {
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(20px);
+            }
+        }
+            padding: 20px 30px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        .message-input.active {
+            display: flex;
+        }
+        
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 30px;
+            padding: 12px 20px;
+            gap: 12px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .input-wrapper:focus-within {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+        }
+        
+        .message-input input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            font-family: inherit;
+            padding: 6px 0;
+        }
+        
+        .attach-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #e0e0e0;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .attach-btn:hover {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+        
+        /* Scrollbar personalizado elegante */
+        .grupos-list::-webkit-scrollbar,
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .grupos-list::-webkit-scrollbar-track,
+        .messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .grupos-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #81c784, #66bb6a);
+            border-radius: 4px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+        }
+        
+        .grupos-list::-webkit-scrollbar-thumb:hover,
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #66bb6a, #4caf50);
+        }
+        
+        /* Responsive: en móvil mostramos sidebar O chat-area (alternancia con JS) */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                display: none;
+            }
+            
+            .sidebar.mobile-show {
+                display: flex !important;
+            }
+            
+            .chat-area {
+                display: none;
+            }
+            
+            .chat-area.mobile-show {
+                display: flex !important;
+            }
+            
+            /* Botón volver a lista (solo visible en móvil) */
+            .chat-header .btn-volver-chat {
+                display: inline-flex !important;
+            }
+        }
+        
+        .chat-header .btn-volver-chat {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #e0e0e0;
+            color: #1b5e20;
+            font-size: 1.2rem;
+            text-decoration: none;
+            margin-right: 8px;
+        }
+        .chat-header .btn-volver-chat:hover {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Sidebar - Lista de Grupos -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-header-content">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="sidebar-title">
+                        <h2>🌳 Grupos de Ejidos</h2>
+                        <p>ProNatura - Conservación y Comunidad</p>
+                        <a href="index.html" class="btn-volver-inicio" title="Volver al inicio">← Volver al inicio</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Buscar grupo..." id="searchInput">
+            </div>
+            
+            <div class="grupos-list" id="gruposList">
+                <!-- Los grupos se cargarán aquí dinámicamente -->
+            </div>
+        </div>
+        
+        <!-- Área de Chat -->
+        <div class="chat-area" id="chatArea">
+            <!-- Placeholder inicial -->
+            <div class="chat-placeholder" id="chatPlaceholder">
+                <div class="chat-placeholder-icon">🌿</div>
+                <h2>Chat Comunitario ProNatura</h2>
+                <p>Selecciona un grupo para comenzar la conversación</p>
+            </div>
+            
+            <!-- Chat activo (oculto por defecto) -->
+            <div class="chat-header" id="chatHeader">
+                <a href="#" class="btn-volver-chat" id="btnVolverChat" title="Volver a grupos">←</a>
+                <div class="chat-header-avatar" id="currentGroupAvatar">🌳</div>
+                <div class="chat-header-info">
+                    <div class="chat-header-title" id="currentGroupName">Grupo</div>
+                    <div class="chat-header-subtitle" id="currentGroupSubtitle">0 miembros activos</div>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <!-- Los mensajes se cargarán aquí -->
+            </div>
+            
+            <div class="message-input" id="messageInput">
+                <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none">
+                <button type="button" class="attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Subir foto o video">📎</button>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="Escribe tu mensaje..." id="messageText">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Datos del usuario desde params o localStorage
+    let userData = {
+        id: Date.now(), // ID único por sesión
+        nombre: 'Usuario',
+        estado: '',
+        municipio: '',
+        ciudad: ''
+    };
+
+    // Grupos disponibles (se cargarán desde la API)
+    let gruposData = [];
+
+    let currentGroup = null;
+    let pollingInterval = null;
+    let lastMessageId = 0;
+    let pollingInProgress = false;
+    const POLLING_INTERVAL = 2000; // 2 segundos para que dos personas vean los mensajes casi al instante
+    const API_BASE = '../api/chat_api.php';
+
+    // Cargar datos del usuario: prioridad = sesión actual > URL > por defecto
+    function cargarUsuario() {
+        const params = new URLSearchParams(window.location.search);
+        // Usar siempre la sesión del usuario logueado para que los mensajes se atribuyan a la cuenta correcta
+        try {
+            const sessionJson = sessionStorage.getItem('current_session') || localStorage.getItem('current_session');
+            if (sessionJson) {
+                const session = JSON.parse(sessionJson);
+                if (session.id != null && session.id !== '') {
+                    userData.id = parseInt(session.id, 10);
+                    if (isNaN(userData.id)) userData.id = Date.now();
+                }
+                if (session.nombre && session.nombre.trim()) userData.nombre = session.nombre.trim();
+            }
+        } catch (e) { /* ignorar si no hay sesión o está corrupta */ }
+        // URL > sessionStorage > no poner 'México' por defecto (se resuelve en inicializar con get_estado_asignado)
+        userData.estado = params.get('estado') || sessionStorage.getItem('chat_estado') || userData.estado || '';
+        userData.municipio = params.get('municipio') || sessionStorage.getItem('chat_municipio') || userData.municipio || '';
+        userData.ciudad = params.get('ciudad') || sessionStorage.getItem('chat_ciudad') || userData.ciudad || '';
+        if (params.get('usuario_id')) {
+            const idUrl = parseInt(params.get('usuario_id'), 10);
+            if (!isNaN(idUrl)) userData.id = idUrl;
+        }
+        if (params.get('nombre')) userData.nombre = params.get('nombre');
+        // IDs muy altos = anónimo (no usuario de BD); mantener así para enviar null al API
+        if (userData.id >= 2000000000) userData.id = Date.now();
+        document.getElementById('userAvatar').textContent = (userData.nombre || 'U').charAt(0).toUpperCase();
+    }
+
+    // Cargar grupos desde la API (filtrar por estado para mostrar el chat donde aceptaron al usuario)
+    async function cargarGrupos() {
+        try {
+            let url = `${API_BASE}?action=obtener_grupos`;
+            if (userData.estado) url += `&estado=${encodeURIComponent(userData.estado)}`;
+            if (userData.municipio) url += `&municipio=${encodeURIComponent(userData.municipio)}`;
+            if (userData.ciudad) url += `&ciudad=${encodeURIComponent(userData.ciudad)}`;
+            if (userData.id && userData.id < 2000000000) url += `&usuario_id=${userData.id}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                gruposData = data.grupos.map(grupo => ({
+                    id: grupo.id,
+                    nombre: grupo.nombre,
+                    region: (grupo.estado || grupo.region || '').trim(),
+                    icon: grupo.icono || '🌳',
+                    miembros: grupo.miembros || 0,
+                    ultimoMensaje: grupo.ultimo_mensaje ? 
+                        `${grupo.ultimo_usuario || 'Usuario'}: ${grupo.ultimo_mensaje.substring(0, 30)}${grupo.ultimo_mensaje.length > 30 ? '...' : ''}` : 
+                        'No hay mensajes',
+                    hora: grupo.ultima_hora || '',
+                    unread: 0
+                }));
+                
+                renderGrupos();
+
+            }
+        } catch (error) {
+
+        }
+    }
+
+    // Renderizar lista de grupos
+    function renderGrupos() {
+        const gruposList = document.getElementById('gruposList');
+        gruposList.innerHTML = '';
+        
+        if (gruposData.length === 0) {
+            gruposList.innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">Cargando grupos...</p>';
+            return;
+        }
+        
+        gruposData.forEach(grupo => {
+            const grupoCard = document.createElement('div');
+            grupoCard.className = 'grupo-card';
+            grupoCard.onclick = () => abrirGrupo(grupo.id);
+            
+            grupoCard.innerHTML = `
+                <div class="grupo-avatar">${grupo.icon}</div>
+                <div class="grupo-info">
+                    <div class="grupo-header">
+                        <div class="grupo-name">${grupo.nombre}</div>
+                        <div class="grupo-time">${grupo.hora || ''}</div>
+                    </div>
+                    <div class="grupo-last-message">
+                        ${grupo.ultimoMensaje || 'No hay mensajes'}
+                        ${grupo.unread > 0 ? `<span class="unread-badge">${grupo.unread}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            gruposList.appendChild(grupoCard);
+        });
+    }
+
+    function esMobile() {
+        return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    // Abrir grupo
+    function abrirGrupo(grupoId) {
+        detenerPolling();
+        
+        currentGroup = gruposData.find(g => g.id === grupoId);
+        lastMessageId = 0;
+        
+        document.getElementById('chatPlaceholder').style.display = 'none';
+        document.getElementById('chatHeader').style.display = 'flex';
+        document.getElementById('messagesContainer').classList.add('active');
+        document.getElementById('messageInput').classList.add('active');
+        
+        document.getElementById('currentGroupAvatar').textContent = currentGroup.icon;
+        document.getElementById('currentGroupName').textContent = currentGroup.nombre;
+        document.getElementById('currentGroupSubtitle').textContent = `${currentGroup.miembros} miembros activos`;
+        
+        document.querySelectorAll('.grupo-card').forEach((item, index) => {
+            item.classList.toggle('active', gruposData[index].id === grupoId);
+        });
+        
+        if (esMobile()) {
+            document.getElementById('sidebar').classList.remove('mobile-show');
+            document.getElementById('chatArea').classList.add('mobile-show');
+        }
+        
+        cargarMensajes();
+        iniciarPolling();
+    }
+    
+    function volverAListaGrupos() {
+        if (!esMobile()) return;
+        document.getElementById('chatArea').classList.remove('mobile-show');
+        document.getElementById('sidebar').classList.add('mobile-show');
+    }
+
+    // Cargar mensajes desde la API
+    async function cargarMensajes(scrollToBottom = true, retry = false) {
+        if (!currentGroup) return;
+        
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
+        const grupoId = parseInt(currentGroup.id, 10);
+        if (isNaN(grupoId) || grupoId <= 0) return;
+        
+        try {
+            const url = `${API_BASE}?action=obtener_mensajes&grupo_id=${grupoId}&desde_id=${lastMessageId}&limite=50`;
+            const response = await fetch(url);
+            if (!response.ok) return;
+            
+            const data = await response.json();
+            if (!data || !data.success) return;
+            const mensajes = Array.isArray(data.mensajes) ? data.mensajes : [];
+            
+            // Primera carga de este grupo: limpiar contenedor
+            if (lastMessageId === 0) {
+                container.innerHTML = '';
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'message-date';
+                dateDiv.innerHTML = '<span>Hoy</span>';
+                container.appendChild(dateDiv);
+            }
+            
+            if (mensajes.length > 0) {
+                let hadNewMessages = false;
+                mensajes.forEach(msg => {
+                    if (container.querySelector(`[data-message-id="${msg.id}"]`)) return;
+                    hadNewMessages = true;
+                    const isOwn = (msg.usuario_id != null && msg.usuario_id == userData.id) || (msg.usuario_nombre && msg.usuario_nombre === userData.nombre);
+                    
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+                    messageDiv.setAttribute('data-message-id', msg.id);
+                    
+                    const horaStr = formatHoraLocal(msg);
+                    const baseAdj = window.location.pathname.includes('/pages/') ? '../' : '';
+                    const urlAdj = (msg.adjunto_url && msg.adjunto_url.indexOf('http') !== 0) ? (baseAdj + msg.adjunto_url) : (msg.adjunto_url || '');
+                    const adjuntoImg = (msg.adjunto_tipo === 'imagen' && urlAdj) ? `<div class="message-adjunto"><img src="${escapeHtml(urlAdj)}" alt="Imagen" class="chat-img" loading="lazy"></div>` : '';
+                    const adjuntoVid = (msg.adjunto_tipo === 'video' && urlAdj) ? `<div class="message-adjunto"><video src="${escapeHtml(urlAdj)}" controls class="chat-video"></video></div>` : '';
+                    messageDiv.innerHTML = `
+                        <div class="message-bubble">
+                            ${!isOwn ? `<div class="message-sender">${escapeHtml(msg.usuario_nombre || 'Usuario')}</div>` : ''}
+                            ${adjuntoImg}${adjuntoVid}
+                            <div class="message-text">${escapeHtml(msg.texto || '')}</div>
+                            <div class="message-time">${horaStr} ${isOwn ? '✓✓' : ''}</div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(messageDiv);
+                });
+                
+                const lastId = mensajes[mensajes.length - 1].id;
+                if (lastId > lastMessageId) lastMessageId = lastId;
+                
+                if (scrollToBottom || hadNewMessages) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            } else if (lastMessageId === 0 && !retry) {
+                // Primera carga y vacío: reintentar una vez por si la BD tarda
+                setTimeout(() => cargarMensajes(true, true), 400);
+            }
+        } catch (error) {
+            console.error('Error cargando mensajes:', error);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (text == null || text === '') return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatHoraLocal(msg) {
+        if (msg.timestamp != null && msg.timestamp > 0) {
+            return new Date(msg.timestamp * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        }
+        if (msg.fecha_completa) {
+            const d = new Date(msg.fecha_completa.replace(' ', 'T'));
+            if (!isNaN(d.getTime())) return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        }
+        return msg.hora || '';
+    }
+
+    // Añadir mensaje al DOM (optimista o tras cargar)
+    function appendMessageToDOM(msg, isOwn) {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+        messageDiv.setAttribute('data-message-id', msg.id || 'temp');
+        const horaStr = msg.timestamp ? formatHoraLocal(msg) : (new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+        const baseAdj = window.location.pathname.includes('/pages/') ? '../' : '';
+        const urlAdj = (msg.adjunto_url && msg.adjunto_url.indexOf('http') !== 0) ? (baseAdj + msg.adjunto_url) : (msg.adjunto_url || '');
+        const adjuntoImg = (msg.adjunto_tipo === 'imagen' && urlAdj) ? `<div class="message-adjunto"><img src="${escapeHtml(urlAdj)}" alt="Imagen" class="chat-img" loading="lazy"></div>` : '';
+        const adjuntoVid = (msg.adjunto_tipo === 'video' && urlAdj) ? `<div class="message-adjunto"><video src="${escapeHtml(urlAdj)}" controls class="chat-video"></video></div>` : '';
+        messageDiv.innerHTML = `
+            <div class="message-bubble">
+                ${!isOwn ? `<div class="message-sender">${escapeHtml(msg.usuario_nombre || 'Usuario')}</div>` : ''}
+                ${adjuntoImg}${adjuntoVid}
+                <div class="message-text">${escapeHtml(msg.texto || '')}</div>
+                <div class="message-time">${horaStr} ${isOwn ? '✓✓' : ''}</div>
+            </div>
+        `;
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    let selectedChatFile = null;
+    document.getElementById('chatFileInput').addEventListener('change', function() {
+        selectedChatFile = this.files && this.files[0] ? this.files[0] : null;
+    });
+
+    async function sendMessage() {
+        const input = document.getElementById('messageText');
+        const text = input.value.trim();
+        const fileInput = document.getElementById('chatFileInput');
+        
+        if ((!text && !selectedChatFile) || !currentGroup) return;
+        
+        const textToSend = text;
+        const fileToSend = selectedChatFile;
+        input.value = '';
+        if (fileInput) fileInput.value = '';
+        selectedChatFile = null;
+        
+        const tempMsg = { id: 'temp', usuario_id: userData.id, usuario_nombre: userData.nombre, texto: textToSend || (fileToSend ? '(foto/video)' : ''), timestamp: Math.floor(Date.now()/1000) };
+        appendMessageToDOM(tempMsg, true);
+        
+        try {
+            let response;
+            if (fileToSend) {
+                const form = new FormData();
+                form.append('action', 'enviar_mensaje');
+                form.append('grupo_id', currentGroup.id);
+                form.append('usuario_id', userData.id < 2000000000 ? userData.id : '');
+                form.append('texto', textToSend || '');
+                form.append('archivo', fileToSend);
+                response = await fetch(API_BASE, { method: 'POST', body: form });
+            } else {
+                response = await fetch(`${API_BASE}?action=enviar_mensaje`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        grupo_id: currentGroup.id,
+                        usuario_id: userData.id < 2000000000 ? userData.id : null,
+                        usuario_nombre: userData.nombre,
+                        texto: textToSend
+                    })
+                });
+            }
+            const data = await response.json();
+            
+            if (data.success) {
+                lastMessageId = 0;
+                await cargarMensajes(true);
+                const grupo = gruposData.find(g => g.id === currentGroup.id);
+                if (grupo) {
+                    grupo.ultimoMensaje = `${userData.nombre || 'Tú'}: ${(textToSend || '📎').substring(0, 30)}${(textToSend || '').length > 30 ? '...' : ''}`;
+                    grupo.hora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                    renderGrupos();
+                }
+            } else {
+                const temp = document.querySelector('[data-message-id="temp"]');
+                if (temp) temp.remove();
+                input.value = textToSend;
+            }
+        } catch (error) {
+            const temp = document.querySelector('[data-message-id="temp"]');
+            if (temp) temp.remove();
+            input.value = textToSend;
+        }
+    }
+
+    // Polling: evita solapamiento para no duplicar mensajes; así dos personas ven los mensajes del otro
+    function iniciarPolling() {
+        if (pollingInterval) clearInterval(pollingInterval);
+        
+        pollingInterval = setInterval(async () => {
+            if (!currentGroup || pollingInProgress) return;
+            pollingInProgress = true;
+            try {
+                await cargarMensajes(false);
+                await actualizarListaGrupos();
+            } finally {
+                pollingInProgress = false;
+            }
+        }, POLLING_INTERVAL);
+    }
+
+    function detenerPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    // Actualizar lista de grupos desde la API
+    async function actualizarListaGrupos() {
+        await cargarGrupos();
+    }
+
+    // Buscar grupos
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        const search = e.target.value.toLowerCase();
+        document.querySelectorAll('.grupo-card').forEach((item, index) => {
+            const grupo = gruposData[index];
+            const match = grupo.nombre.toLowerCase().includes(search) || 
+                         grupo.region.toLowerCase().includes(search);
+            item.style.display = match ? 'flex' : 'none';
+        });
+    });
+
+    // Enter para enviar
+    document.getElementById('messageText').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    // Limpiar al cerrar
+    window.addEventListener('beforeunload', () => {
+        detenerPolling();
+    });
+
+    // Resolver estado asignado si no viene en URL (para abrir el chat correcto, ej. Tamaulipas)
+    async function resolverEstadoSiFalta() {
+        if (userData.estado) return;
+        if (!userData.id || userData.id >= 2000000000) {
+            userData.estado = 'México';
+            return;
+        }
+        try {
+            const path = window.location.pathname;
+            const basePath = path.substring(0, path.lastIndexOf('/') + 1);
+            const base = path.includes('/pages/') ? basePath + '../api/api.php' : basePath + 'api/api.php';
+            const res = await fetch(window.location.origin + base + '?action=get_estado_asignado&usuario_id=' + userData.id);
+            const data = await res.json();
+            if (data.success && (data.estado || '').trim()) {
+                userData.estado = data.estado.trim();
+                if ((data.municipio || '').trim()) userData.municipio = data.municipio.trim();
+                if ((data.ciudad || '').trim()) userData.ciudad = data.ciudad.trim();
+                sessionStorage.setItem('chat_estado', userData.estado);
+                sessionStorage.setItem('chat_municipio', userData.municipio);
+                sessionStorage.setItem('chat_ciudad', userData.ciudad);
+            } else {
+                userData.estado = 'México';
+            }
+        } catch (e) {
+            userData.estado = 'México';
+        }
+    }
+
+    // Inicializar
+    async function inicializar() {
+        cargarUsuario();
+        await resolverEstadoSiFalta();
+        await cargarGrupos();
+        
+        if (esMobile()) {
+            document.getElementById('sidebar').classList.add('mobile-show');
+            document.getElementById('chatArea').classList.remove('mobile-show');
+        }
+        
+        document.getElementById('btnVolverChat').addEventListener('click', function(e) {
+            e.preventDefault();
+            volverAListaGrupos();
+        });
+        
+        const estadoBuscar = userData.estado || new URLSearchParams(window.location.search).get('estado');
+        let grupoAbrir = null;
+        if (estadoBuscar) {
+            grupoAbrir = gruposData.find(g => (g.region || '').trim() === estadoBuscar);
+        }
+        if (!grupoAbrir) {
+            grupoAbrir = gruposData.find(g => (g.nombre || '').trim() !== 'Ejidos México');
+        }
+        if (!grupoAbrir && gruposData.length > 0) grupoAbrir = gruposData[0];
+        if (grupoAbrir) {
+            if (esMobile()) {
+                setTimeout(() => abrirGrupo(grupoAbrir.id), 500);
+            } else {
+                setTimeout(() => abrirGrupo(grupoAbrir.id), 500);
+            }
+        }
+    }
+    
+    inicializar();
+    </script>
+</body>
+</html>

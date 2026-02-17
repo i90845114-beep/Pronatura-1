@@ -4,22 +4,41 @@
     box-sizing: border-box;
 }
 
+/* Base responsive: iOS y móviles */
+html {
+    -webkit-text-size-adjust: 100%;
+    height: 100%;
+}
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: #f5f5f5;
+    background-color: white;
     color: #333;
     line-height: 1.6;
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Safe area para iPhone con notch / barra home */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+/* Tap highlight suave en iOS */
+a, button, [role="button"], .nav-item, .btn-logout, .profile-trigger {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.08);
 }
 
-/* Header */
+/* Header: respetar safe area en iOS (notch, isla) */
 .header {
-    background: linear-gradient(135deg, #2c7a7b 0%, #1a5f5f 100%);
-    color: white;
+    background: white;
+    color: #333;
     padding: 1.5rem 2rem;
+    padding-top: max(1.5rem, env(safe-area-inset-top));
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: visible;
 }
 
 .header h1 {
@@ -39,9 +58,9 @@ body {
 }
 
 .btn-logout {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
+    background: rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.1);
+    color: #333;
     padding: 0.5rem 0.8rem;
     border-radius: 5px;
     cursor: pointer;
@@ -50,8 +69,293 @@ body {
 }
 
 .btn-logout:hover {
-    background: rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.1);
     transform: scale(1.1);
+}
+
+/* Menú de perfil plegable - diseño premium */
+.user-info {
+    position: relative;
+    overflow: visible;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+}
+/* Wrapper para que el dropdown se posicione DEBAJO del botón, no a la par */
+.profile-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.9rem 0.5rem 0.45rem;
+    background: rgba(255,255,255,0.95);
+    border: none;
+    border-radius: 2.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.2s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.profile-trigger:hover {
+    background: #fff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+.profile-trigger.is-open {
+    background: #fff;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+}
+.profile-trigger .profile-avatar {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    max-width: 22px;
+    max-height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #2c7a7b 0%, #234e52 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: -0.02em;
+    box-shadow: 0 2px 8px rgba(44, 122, 123, 0.35);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.profile-trigger .profile-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+/* Si la imagen falla, no mostrar texto alternativo encima */
+.profile-trigger .profile-avatar img[alt] {
+    font-size: 0;
+    color: transparent;
+}
+/* Imagen de perfil: nunca más grande que el avatar */
+img[src*="perfil-removebg-preview.png"] {
+    max-width: 22px !important;
+    max-height: 22px !important;
+    object-fit: cover;
+}
+.profile-trigger .user-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.profile-trigger .profile-chevron {
+    font-size: 0.6rem;
+    color: #2c7a7b;
+    opacity: 0.9;
+    transition: transform 0.25s ease;
+}
+.profile-trigger.is-open .profile-chevron {
+    transform: rotate(180deg);
+}
+/* Recuadro que se despliega DEBAJO del nombre (no a la par) */
+.profile-dropdown {
+    display: none !important;
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    margin-top: 0.5rem !important;
+    width: 320px !important;
+    max-width: 320px !important;
+    min-width: 280px !important;
+    transform-origin: top right !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 32px rgba(44, 122, 123, 0.2), 0 0 0 1px rgba(44, 122, 123, 0.12) !important;
+    padding: 0 !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    z-index: 99999 !important;
+    overflow: visible !important;
+    border: 1px solid rgba(44, 122, 123, 0.2) !important;
+}
+.profile-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    right: 22px;
+    left: auto;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-left: 1px solid rgba(44, 122, 123, 0.2);
+    border-top: 1px solid rgba(44, 122, 123, 0.2);
+    transform: rotate(45deg);
+    z-index: 1;
+}
+.profile-dropdown.is-open {
+    display: block !important;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.profile-dropdown[hidden] {
+    display: none !important;
+}
+/* Cabecera del recuadro en tono teal (convina con el menú) */
+.profile-dropdown .profile-dropdown-header {
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #2c7a7b 0%, #234e52 100%);
+    border-bottom: none;
+}
+.profile-dropdown .profile-dropdown-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+.profile-dropdown .profile-dropdown-email {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.85);
+    margin-top: 0.2rem;
+    font-weight: 500;
+}
+/* Cuadrícula de opciones dentro de la caja blanca - FORZAR COLUMNA VERTICAL */
+.profile-dropdown .profile-dropdown-links {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem !important;
+    width: 100% !important;
+    background: #ffffff !important;
+}
+.profile-dropdown-link,
+.profile-dropdown .profile-dropdown-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    color: #1a202c !important;
+    text-decoration: none !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: left !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    font-family: inherit;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+.profile-dropdown-link:link,
+.profile-dropdown-link:visited,
+.profile-dropdown-link:hover,
+.profile-dropdown-link:active {
+    color: #1a202c !important;
+    text-decoration: none !important;
+}
+.profile-dropdown .profile-dropdown-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(44, 122, 123, 0.1);
+    color: #2c7a7b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.profile-dropdown-link:hover,
+.profile-dropdown .profile-dropdown-item:not(.logout):hover {
+    background: rgba(44, 122, 123, 0.08);
+    border-color: rgba(44, 122, 123, 0.2);
+    color: #234e52;
+}
+.profile-dropdown-link:hover .profile-dropdown-icon {
+    background: rgba(44, 122, 123, 0.18);
+}
+.profile-dropdown .profile-dropdown-divider {
+    height: 1px;
+    background: rgba(0,0,0,0.06);
+    margin: 0.4rem 1rem;
+}
+.profile-dropdown .profile-dropdown-item.logout {
+    color: #b91c1c;
+    font-weight: 600;
+    margin: 0.25rem 0.75rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid rgba(185, 28, 28, 0.2);
+}
+.profile-dropdown .profile-dropdown-item.logout .profile-dropdown-icon {
+    background: rgba(185, 28, 28, 0.12);
+    color: #b91c1c;
+}
+.profile-dropdown .profile-dropdown-item.logout:hover {
+    background: rgba(185, 28, 28, 0.1);
+}
+.profile-dropdown .profile-dropdown-item.logout:hover .profile-dropdown-icon {
+    background: rgba(185, 28, 28, 0.2);
+}
+/* Header teal (barra principal) */
+.header.teal-header {
+    background: linear-gradient(135deg, #2c7a7b 0%, #234e52 100%) !important;
+    color: #fff;
+    box-shadow: 0 2px 16px rgba(44, 122, 123, 0.25);
+}
+.header.teal-header h1,
+.header.teal-header .nav-item {
+    color: #fff;
+}
+.header.teal-header .nav-item:hover {
+    background: rgba(255,255,255,0.15);
+}
+.header.teal-header .nav-item.active {
+    border-bottom-color: rgba(255,255,255,0.9);
+}
+/* Si el header es oscuro/teal, adaptar el trigger */
+.header[style*="background"] .profile-trigger,
+.header.teal-header .profile-trigger {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.header[style*="background"] .profile-trigger .user-name,
+.header.teal-header .profile-trigger .user-name { color: #fff; }
+.header[style*="background"] .profile-trigger .profile-chevron,
+.header.teal-header .profile-trigger .profile-chevron { color: rgba(255,255,255,0.9); }
+.header[style*="background"] .profile-trigger:hover,
+.header.teal-header .profile-trigger:hover {
+    background: rgba(255,255,255,0.3);
+}
+.header[style*="background"] .profile-trigger .profile-avatar,
+.header.teal-header .profile-trigger .profile-avatar {
+    background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%);
+    color: #2c7a7b;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.header.teal-header .profile-trigger .profile-avatar img {
+    max-width: 22px !important;
+    max-height: 22px !important;
+    object-fit: cover;
 }
 
 .nav-bar {
@@ -60,7 +364,7 @@ body {
 }
 
 .nav-item {
-    color: white;
+    color: #333;
     text-decoration: none;
     display: flex;
     align-items: center;
@@ -71,11 +375,11 @@ body {
 }
 
 .nav-item:hover {
-    background-color: rgba(255,255,255,0.1);
+    background-color: rgba(0,0,0,0.05);
 }
 
 .nav-item.active {
-    border-bottom: 2px solid white;
+    border-bottom: 2px solid #2c7a7b;
     font-weight: 600;
 }
 
@@ -108,7 +412,7 @@ body {
 .search-wrapper {
     display: flex;
     align-items: center;
-    background: #f5f5f5;
+    background: white;
     border-radius: 25px;
     padding: 0.5rem 1rem;
     width: 400px;
@@ -145,12 +449,12 @@ body {
 }
 
 .btn-filter {
-    background: #f5f5f5;
+    background: white;
     color: #333;
 }
 
 .btn-filter:hover {
-    background: #e0e0e0;
+    background: white;
 }
 
 .btn-primary {
@@ -168,6 +472,7 @@ body {
 /* Main Content */
 .main-content {
     padding: 0 2rem 2rem;
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
 .records-grid {
@@ -355,7 +660,7 @@ body {
 }
 
 .location-coords {
-    background: #e3f2fd;
+    background: white;
     padding: 0.7rem;
     border-radius: 5px;
     display: flex;
@@ -416,7 +721,7 @@ body {
 }
 
 .close-btn:hover {
-    background: #f5f5f5;
+    background: white;
 }
 
 .record-form {
@@ -540,7 +845,7 @@ body {
 }
 
 .btn-cancel:hover {
-    background: #f5f5f5;
+    background: white;
     border-color: #ccc;
 }
 
@@ -604,6 +909,7 @@ body {
     background: white;
     border-radius: 12px;
     padding: 2rem;
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
     max-width: 500px;
     width: 90%;
     max-height: 90vh;
@@ -664,7 +970,7 @@ body {
 .map-area {
     width: 100%;
     height: 400px;
-    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    background: white;
     border: 2px solid #4caf50;
     border-radius: 8px;
     position: relative;
@@ -737,7 +1043,7 @@ body {
 }
 
 .zoom-btn:hover {
-    background: #f5f5f5;
+    background: white;
     border-color: #999;
 }
 
@@ -892,6 +1198,7 @@ body {
 
     .main-content {
         padding: 0 1rem 1rem;
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
 
     .records-grid {
@@ -1001,6 +1308,7 @@ body {
 
     .main-content {
         padding: 0 0.8rem 0.8rem;
+        padding-bottom: max(0.8rem, env(safe-area-inset-bottom));
     }
 
     .card-header {
@@ -1195,5 +1503,31 @@ body {
     .auth-box {
         padding: 1rem;
     }
+}
+
+/* Modal "¿Acceder a chats o nueva solicitud?" - fondo tipo cristal desenfocado */
+#chatChoiceModal {
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+#chatChoiceModal .email-modal-content,
+#chatChoiceModal .chat-choice-content {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 2rem 2.25rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+#chatChoiceModal .email-modal-content h2,
+#chatChoiceModal .chat-choice-content h2 {
+    color: #2e7d32;
+    font-weight: 600;
+}
+#chatChoiceModal .email-modal-content p,
+#chatChoiceModal .chat-choice-content p {
+    color: #444;
 }
 

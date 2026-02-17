@@ -6,6 +6,15 @@ let allRecords = [];
 let categorias = [];
 let subcategorias = [];
 
+// Ruta de la API: absoluta en producción, relativa en local
+function getScriptApiUrl(action, params) {
+    const href = window.location.href.toLowerCase();
+    const isProduction = href.indexOf('organicjournal.com.mx') !== -1 || href.indexOf('hostinger') !== -1;
+    const base = isProduction ? '/api/api.php' : '../api/api.php';
+    const query = params ? '&' + new URLSearchParams(params).toString() : '';
+    return `${base}?action=${action}${query}`;
+}
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     loadRecords();
@@ -17,7 +26,7 @@ async function loadRecords() {
     const grid = document.getElementById('recordsGrid');
     
     if (!grid) {
-        console.error('❌ No se encontró el elemento recordsGrid');
+
         return;
     }
     
@@ -47,13 +56,7 @@ async function loadRecords() {
     
     // Si hay navegación interna, NO hacer nada - permitir que la página cargue normalmente
     if (accesoPermitido || navegandoInternamente || esNavegacionInterna) {
-        console.log('✅ [script.js] Navegación interna detectada - NO VERIFICAR USUARIO');
-        console.log('🔍 [script.js] Flags:', {
-            accesoPermitido: accesoPermitido,
-            navegandoInternamente: navegandoInternamente,
-            esNavegacionInterna: esNavegacionInterna,
-            referrer: referrer
-        });
+
         // Continuar con el flujo normal aunque no haya usuario detectado todavía
         // El usuario puede estar cargándose todavía
     }
@@ -61,11 +64,10 @@ async function loadRecords() {
     const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
     
     if (!currentUser) {
-        console.log('⚠️ No hay usuario autenticado en script.js');
-        
+
         // Si hay navegación interna, NO redirigir - solo mostrar mensaje
         if (accesoPermitido || navegandoInternamente || esNavegacionInterna) {
-            console.log('✅ [script.js] Navegación interna - NO REDIRIGIR, solo mostrar mensaje');
+
             grid.innerHTML = `
                 <div class="empty-state">
                     <h3>Comienza a registrar</h3>
@@ -91,19 +93,16 @@ async function loadRecords() {
         `;
         return;
     }
-    
-    console.log('✅ Usuario autenticado:', currentUser);
-    
+
     try {
         // Cargar categorías primero
-        console.log('📡 Cargando categorías...');
+
         await loadCategorias();
         
         // Usar la nueva API de registros ambientales
-        console.log('📡 Cargando registros para usuario:', currentUser.id);
+
         const apiUrl = `../api/api.php?action=get_registros_ambientales&usuario_id=${currentUser.id}&current_user_id=${currentUser.id}`;
-        console.log('📡 URL de API:', apiUrl);
-        
+
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
@@ -111,12 +110,10 @@ async function loadRecords() {
         }
         
         const data = await response.json();
-        console.log('📦 Respuesta recibida:', data);
-        
+
         if (data.success) {
             allRecords = data.records || [];
-            console.log(`✅ ${allRecords.length} registros cargados`);
-            
+
             if (allRecords.length === 0) {
                 grid.innerHTML = `
                     <div class="empty-state">
@@ -132,7 +129,7 @@ async function loadRecords() {
             
             displayRecords(allRecords);
         } else {
-            console.error('❌ Error en respuesta:', data.message);
+
             grid.innerHTML = `
                 <div class="empty-state">
                     <h3>Error al cargar registros</h3>
@@ -144,7 +141,7 @@ async function loadRecords() {
             `;
         }
     } catch (error) {
-        console.error('❌ Error al cargar registros:', error);
+
         grid.innerHTML = `
             <div class="empty-state">
                 <h3>Error de conexión</h3>
@@ -160,33 +157,24 @@ async function loadRecords() {
 
 // Cargar categorías
 async function loadCategorias() {
+    const categoriaSelect = document.getElementById('filterCategoria');
+    if (!categoriaSelect) return;
+    
     try {
-        const response = await fetch('../api/api.php?action=get_categorias');
+        const response = await fetch(getScriptApiUrl('get_categorias'));
+        if (!response.ok) throw new Error('Error HTTP: ' + response.status);
         const data = await response.json();
         
-        if (data.success && data.categorias) {
-            categorias = data.categorias;
-            const categoriaSelect = document.getElementById('filterCategoria');
-            if (categoriaSelect) {
-                // Limpiar opciones existentes excepto la primera
-                categoriaSelect.innerHTML = '<option value="">Todas las categorias</option>';
-                
-                categorias.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat.id;
-                    option.textContent = cat.nombre;
-                    categoriaSelect.appendChild(option);
-                });
-                
-                console.log('Categorías cargadas:', categorias.length);
-            } else {
-                console.error('No se encontró el elemento filterCategoria');
-            }
-        } else {
-            console.error('Error en respuesta de categorías:', data);
-        }
+        categorias = (data.success && data.categorias && Array.isArray(data.categorias)) ? data.categorias : [];
+        categoriaSelect.innerHTML = '<option value="">Todas las categorias</option>';
+        categorias.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.nombre;
+            categoriaSelect.appendChild(option);
+        });
     } catch (error) {
-        console.error('Error al cargar categorías:', error);
+        categoriaSelect.innerHTML = '<option value="">Error al cargar categorías</option>';
     }
 }
 
@@ -202,22 +190,22 @@ async function loadSubcategorias(categoriaId) {
     }
     
     try {
-        const response = await fetch(`../api/api.php?action=get_subcategorias&categoria_id=${categoriaId}`);
+        const response = await fetch(getScriptApiUrl('get_subcategorias', { categoria_id: categoriaId }));
+        if (!response.ok) throw new Error('Error HTTP: ' + response.status);
         const data = await response.json();
         
-        if (data.success) {
-            subcategorias = data.subcategorias;
-            subcategoriaSelect.innerHTML = '<option value="">Todas las subcategorias</option>';
-            subcategorias.forEach(sub => {
-                const option = document.createElement('option');
-                option.value = sub.id;
-                option.textContent = sub.nombre;
-                subcategoriaSelect.appendChild(option);
-            });
-            subcategoriaSelect.disabled = false;
-        }
+        subcategorias = (data.success && data.subcategorias && Array.isArray(data.subcategorias)) ? data.subcategorias : [];
+        subcategoriaSelect.innerHTML = '<option value="">Todas las subcategorias</option>';
+        subcategorias.forEach(sub => {
+            const option = document.createElement('option');
+            option.value = sub.id;
+            option.textContent = sub.nombre;
+            subcategoriaSelect.appendChild(option);
+        });
+        subcategoriaSelect.disabled = false;
     } catch (error) {
-        console.error('Error al cargar subcategorías:', error);
+        subcategoriaSelect.innerHTML = '<option value="">Error al cargar subcategorías</option>';
+        subcategoriaSelect.disabled = false;
     }
 }
 
@@ -236,6 +224,12 @@ function displayRecords(records) {
     
     grid.innerHTML = records.map((record, index) => createRecordCard(record, index)).join('');
     attachCardEventListeners();
+}
+// Verificar si el usuario es administrador
+function isUserAdmin() {
+    const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
+    if (!currentUser) return false;
+    return currentUser.rol === 'admin' || currentUser.rol === 'administrador' || currentUser.rol === 'Administrador';
 }
 
 // Crear tarjeta de registro
@@ -350,7 +344,7 @@ function createRecordCard(record, index) {
                     <div class="card-title">${escapeHtml(titulo)}</div>
                     <div class="card-actions">
                         <button class="action-icon edit-btn" data-id="${recordId}" title="Editar">✏️</button>
-                        <button class="action-icon delete-btn" data-id="${recordId}" title="Eliminar">🗑️</button>
+                        ${isUserAdmin() ? `<button class="action-icon delete-btn" data-id="${recordId}" title="Eliminar">🗑️</button>` : ''}
                     </div>
                 </div>
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -462,13 +456,7 @@ function setupEventListeners() {
                 
                 // Si hay navegación interna o flag de acceso permitido, NO REDIRIGIR
                 if (accesoPermitido || navegandoInternamente || esNavegacionInterna) {
-                    console.log('✅ [script.js] Navegación interna detectada - NO REDIRIGIR');
-                    console.log('🔍 [script.js] Flags:', {
-                        accesoPermitido: accesoPermitido,
-                        navegandoInternamente: navegandoInternamente,
-                        esNavegacionInterna: esNavegacionInterna,
-                        referrer: referrer
-                    });
+
                     // Mostrar mensaje pero NO redirigir
                     const grid = document.getElementById('recordsGrid');
                     if (grid) {
@@ -499,8 +487,10 @@ function setupEventListeners() {
                 return;
             }
             
-            // Si está autenticado, continuar con el flujo normal
-            window.location.href = 'nuevo-registro.html';
+            // Si está autenticado, ir a nuevo registro: limpiar modo edición y reemplazar historial para no volver a edición
+            sessionStorage.removeItem('editingRecord');
+            sessionStorage.removeItem('editingFromAdmin');
+            window.location.replace('nuevo-registro.html');
         });
     }
     
@@ -648,7 +638,7 @@ function showDeleteModal(recordId) {
     modal.classList.add('active');
 }
 
-// Eliminar registro
+// Eliminar registro (SOLO ADMINISTRADORES)
 async function deleteRecord(recordId) {
     const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
     
@@ -657,19 +647,30 @@ async function deleteRecord(recordId) {
         return;
     }
     
+    // Verificar que el usuario sea administrador
+    const isAdmin = currentUser.rol === 'admin' || currentUser.rol === 'administrador' || currentUser.rol === 'Administrador';
+    if (!isAdmin) {
+        alert('Solo los administradores pueden eliminar registros');
+        return;
+    }
+    
     if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) {
         return;
     }
     
     try {
-        const response = await fetch('../api/api.php?action=delete_record', {
+        // Obtener token de administrador si está disponible
+        const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : null;
+        
+        const response = await fetch(getScriptApiUrl('delete_record'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 id: recordId,
-                usuario_id: currentUser.id
+                token: token,
+                is_admin: true
             })
         });
         
@@ -681,7 +682,7 @@ async function deleteRecord(recordId) {
             alert('Error al eliminar: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión. Intenta nuevamente.');
     }
 }
@@ -726,7 +727,7 @@ async function editRecord(recordId) {
             alert('Registro no encontrado');
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al cargar el registro para editar');
     }
 }
@@ -741,7 +742,7 @@ async function getRecords() {
     
     try {
         // Usar la nueva API de registros ambientales
-        const response = await fetch(`../api/api.php?action=get_registros_ambientales&usuario_id=${currentUser.id}`);
+        const response = await fetch(getScriptApiUrl('get_registros_ambientales', { usuario_id: currentUser.id }));
         const data = await response.json();
         
         if (data.success) {
@@ -749,7 +750,7 @@ async function getRecords() {
         }
         return [];
     } catch (error) {
-        console.error('Error al obtener registros:', error);
+
         return [];
     }
 }
@@ -828,5 +829,4 @@ window.recordManager = {
     getRecords,
     saveRecords
 };
-
 

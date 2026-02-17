@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Grupos de Ejidos - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 25%, #b2dfdb 50%, #a5d6a7 75%, #81c784 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 2.2rem;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+        
+        /* Formulario de Solicitud */
+        .solicitud-form {
+            display: block;
+        }
+        
+        .solicitud-form.hidden {
+            display: none;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2e7d32;
+            font-weight: 600;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #333;
+            transition: all 0.3s;
+        }
+        
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+        
+        .form-group select:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        
+        .btn-solicitar {
+            width: 100%;
+            background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-solicitar:hover:not(:disabled) {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+        
+        .btn-solicitar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* Estados */
+        .status-box {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .status-box.show {
+            display: block;
+        }
+        
+        .status-pendiente {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+        }
+        
+        .status-pendiente h2 {
+            color: #f57c00;
+            margin-bottom: 10px;
+        }
+        
+        .status-aprobado {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+        
+        .status-aprobado h2 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .status-box p {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .ubicacion-info {
+            background: rgba(0,0,0,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .ubicacion-info strong {
+            color: #2e7d32;
+        }
+        
+        .btn-ir-chat {
+            width: 100%;
+            background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: none;
+        }
+        
+        .btn-ir-chat.show {
+            display: block;
+        }
+        
+        .btn-ir-chat:hover {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+        
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4caf50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🌳 Grupos de Ejidos</h1>
+        <p class="subtitle">Sistema de comunicación regional para ejidatarios</p>
+        
+        <!-- Formulario de Solicitud -->
+        <div id="solicitudForm" class="solicitud-form">
+            <div class="form-group">
+                <label>Nombre Completo *</label>
+                <input type="text" id="nombreInput" placeholder="Tu nombre completo" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Estado *</label>
+                <select id="estadoSelect" onchange="cargarMunicipios()">
+                    <option value="">-- Selecciona tu estado --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Municipio *</label>
+                <select id="municipioSelect" onchange="habilitarBoton()" disabled>
+                    <option value="">-- Selecciona primero un estado --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Ciudad (opcional)</label>
+                <select id="ciudadSelect" disabled>
+                    <option value="">-- Selecciona primero un municipio --</option>
+                </select>
+            </div>
+            
+            <button class="btn-solicitar" id="btnSolicitar" onclick="enviarSolicitud()" disabled>
+                📝 Solicitar Acceso al Grupo
+            </button>
+        </div>
+        
+        <!-- Estado Pendiente -->
+        <div id="statusPendiente" class="status-box status-pendiente">
+            <h2>⏳ Solicitud Enviada</h2>
+            <p>Tu solicitud está siendo procesada...</p>
+            <div class="loader"></div>
+        </div>
+        
+        <!-- Estado Aprobado -->
+        <div id="statusAprobado" class="status-box status-aprobado">
+            <h2>✅ ¡Acceso Aprobado!</h2>
+            <p>Has sido agregado al grupo regional de ejidos</p>
+            <div id="ubicacionInfo" class="ubicacion-info"></div>
+        </div>
+        
+        <!-- Botón Ir al Chat -->
+        <button class="btn-ir-chat" id="btnIrChat" onclick="irAlChat()">
+            💬 Ir al Chat de Ejidos
+        </button>
+    </div>
+
+    <script>
+    // Datos de México
+    const estadosMexico = [
+        'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
+        'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato',
+        'Guerrero', 'Hidalgo', 'Jalisco', 'México', 'Michoacán', 'Morelos', 'Nayarit',
+        'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí',
+        'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'
+    ];
+
+    const municipiosPorEstado = {
+        'Tamaulipas': ['Altamira', 'Ciudad Madero', 'Ciudad Victoria', 'Matamoros', 'Nuevo Laredo', 'Reynosa', 'Tampico'],
+        'Jalisco': ['Guadalajara', 'Zapopan', 'Tlaquepaque', 'Tonalá', 'Puerto Vallarta'],
+        'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'Apodaca', 'San Nicolás de los Garza']
+    };
+
+    let solicitudData = {
+        nombre: '',
+        estado: '',
+        municipio: '',
+        ciudad: ''
+    };
+
+    // Cargar estados al inicio
+    function cargarEstados() {
+        const select = document.getElementById('estadoSelect');
+        estadosMexico.forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado;
+            option.textContent = estado;
+            select.appendChild(option);
+        });
+    }
+
+    function cargarMunicipios() {
+        const estado = document.getElementById('estadoSelect').value;
+        const municipioSelect = document.getElementById('municipioSelect');
+        const ciudadSelect = document.getElementById('ciudadSelect');
+        
+        municipioSelect.innerHTML = '<option value="">-- Selecciona un municipio --</option>';
+        ciudadSelect.innerHTML = '<option value="">-- Opcional --</option>';
+        ciudadSelect.disabled = true;
+        
+        if (estado) {
+            const municipios = municipiosPorEstado[estado] || ['General', 'Centro', 'Norte', 'Sur'];
+            municipios.forEach(municipio => {
+                const option = document.createElement('option');
+                option.value = municipio;
+                option.textContent = municipio;
+                municipioSelect.appendChild(option);
+            });
+            municipioSelect.disabled = false;
+            
+            // Habilitar selector de ciudad
+            setTimeout(() => {
+                const municipioVal = document.getElementById('municipioSelect').value;
+                if (municipioVal) {
+                    ciudadSelect.disabled = false;
+                    const ciudades = [municipioVal + ' Centro', municipioVal + ' Norte', municipioVal + ' Sur'];
+                    ciudades.forEach(ciudad => {
+                        const option = document.createElement('option');
+                        option.value = ciudad;
+                        option.textContent = ciudad;
+                        ciudadSelect.appendChild(option);
+                    });
+                }
+            }, 100);
+        } else {
+            municipioSelect.disabled = true;
+        }
+        
+        habilitarBoton();
+    }
+
+    function habilitarBoton() {
+        const nombre = document.getElementById('nombreInput').value.trim();
+        const estado = document.getElementById('estadoSelect').value;
+        const municipio = document.getElementById('municipioSelect').value;
+        const btnSolicitar = document.getElementById('btnSolicitar');
+        
+        btnSolicitar.disabled = !(nombre && estado && municipio);
+        
+        // Habilitar selector de ciudad si hay municipio
+        const ciudadSelect = document.getElementById('ciudadSelect');
+        if (municipio) {
+            ciudadSelect.disabled = false;
+            ciudadSelect.innerHTML = '<option value="">-- Opcional --</option>';
+            const ciudades = [municipio + ' Centro', municipio + ' Norte', municipio + ' Sur'];
+            ciudades.forEach(ciudad => {
+                const option = document.createElement('option');
+                option.value = ciudad;
+                option.textContent = ciudad;
+                ciudadSelect.appendChild(option);
+            });
+        }
+    }
+
+    function enviarSolicitud() {
+        // Recopilar datos
+        solicitudData.nombre = document.getElementById('nombreInput').value.trim();
+        solicitudData.estado = document.getElementById('estadoSelect').value;
+        solicitudData.municipio = document.getElementById('municipioSelect').value;
+        solicitudData.ciudad = document.getElementById('ciudadSelect').value;
+        solicitudData.id = Date.now(); // ID único
+        solicitudData.fecha = new Date().toISOString();
+        solicitudData.estado_solicitud = 'pendiente'; // pendiente, aprobada, rechazada
+
+        // Guardar en localStorage (simulación)
+        guardarSolicitudEnStorage(solicitudData);
+        
+        // Ocultar formulario, mostrar pendiente
+        document.getElementById('solicitudForm').classList.add('hidden');
+        document.getElementById('statusPendiente').classList.add('show');
+        
+        // Verificar cada 2 segundos si fue aprobada
+        const intervalo = setInterval(() => {
+            verificarEstadoSolicitud(solicitudData.id, intervalo);
+        }, 2000);
+        
+        // En producción descomenta esto:
+        // fetch('/api/solicitudes/grupos', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify(solicitudData)
+        // })
+        // .then(res => res.json())
+        // .then(data => {
+        //     if (data.aprobado) {
+        //         aprobarSolicitud();
+        //     }
+        // });
+    }
+
+    function guardarSolicitudEnStorage(solicitud) {
+        // Obtener solicitudes existentes
+        let solicitudes = JSON.parse(localStorage.getItem('solicitudesGrupos') || '[]');
+        
+        // Agregar nueva solicitud
+        solicitudes.push(solicitud);
+        
+        // Guardar
+        localStorage.setItem('solicitudesGrupos', JSON.stringify(solicitudes));
+
+    }
+
+    function verificarEstadoSolicitud(solicitudId, intervalo) {
+        // Obtener solicitudes
+        let solicitudes = JSON.parse(localStorage.getItem('solicitudesGrupos') || '[]');
+        
+        // Buscar esta solicitud
+        const solicitud = solicitudes.find(s => s.id === solicitudId);
+        
+        if (solicitud && solicitud.estado_solicitud === 'aprobada') {
+            clearInterval(intervalo);
+            solicitudData = solicitud; // Actualizar datos globales
+            aprobarSolicitud();
+        } else if (solicitud && solicitud.estado_solicitud === 'rechazada') {
+            clearInterval(intervalo);
+            rechazarSolicitud();
+        }
+    }
+
+    function rechazarSolicitud() {
+        document.getElementById('statusPendiente').classList.remove('show');
+        alert('❌ Tu solicitud fue rechazada. Por favor, contacta al administrador.');
+        location.reload();
+    }
+
+    function aprobarSolicitud() {
+
+        // Ocultar pendiente
+        document.getElementById('statusPendiente').classList.remove('show');
+        
+        // Mostrar aprobado con info
+        const ubicacionInfo = document.getElementById('ubicacionInfo');
+        ubicacionInfo.innerHTML = `
+            <p><strong>Nombre:</strong> ${solicitudData.nombre}</p>
+            <p><strong>Ubicación:</strong> ${solicitudData.estado} - ${solicitudData.municipio}
+            ${solicitudData.ciudad ? ' - ' + solicitudData.ciudad : ''}</p>
+        `;
+        document.getElementById('statusAprobado').classList.add('show');
+        
+        // Mostrar botón de ir al chat
+        document.getElementById('btnIrChat').classList.add('show');
+    }
+
+    function irAlChat() {
+
+        // Redirigir al chat con los parámetros de ubicación
+        const params = new URLSearchParams({
+            estado: solicitudData.estado,
+            municipio: solicitudData.municipio,
+            ...(solicitudData.ciudad && { ciudad: solicitudData.ciudad })
+        });
+        
+        window.location.href = `chat.html?${params.toString()}`;
+    }
+
+    // Event listeners
+    document.getElementById('nombreInput').addEventListener('input', habilitarBoton);
+    
+    // Inicializar
+    cargarEstados();
+    </script>
+</body>
+</html>

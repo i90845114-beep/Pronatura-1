@@ -1,4 +1,5 @@
 // Panel de Administración
+
 let allUsers = [];
 let allRegistros = [];
 let allCategorias = [];
@@ -35,12 +36,11 @@ function formatDate(dateString) {
 
 // Función para cargar intentos ofensivos - DEFINIR AL INICIO DEL ARCHIVO
 window.loadIntentosOfensivos = async function loadIntentosOfensivos() {
-    console.log('🔍 [Intentos Ofensivos] ========== INICIANDO CARGA ==========');
-    console.log('🔍 [Intentos Ofensivos] Función ejecutada');
+
     const tbody = document.getElementById('intentosOfensivosTableBody');
-    console.log('🔍 [Intentos Ofensivos] Elemento tbody:', tbody);
+
     if (!tbody) {
-        console.error('❌ [Intentos Ofensivos] No se encontró el elemento tbody');
+
         alert('Error: No se encontró la tabla. Verifica que la sección de Intentos Ofensivos esté visible.');
         return;
     }
@@ -50,7 +50,7 @@ window.loadIntentosOfensivos = async function loadIntentosOfensivos() {
     try {
         const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
         if (!token) {
-            console.error('❌ [Intentos Ofensivos] No hay token de autenticación');
+
             tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error: No autenticado</td></tr>';
             return;
         }
@@ -58,228 +58,421 @@ window.loadIntentosOfensivos = async function loadIntentosOfensivos() {
         const tipoIntento = document.getElementById('filterTipoIntento')?.value || '';
         const usuarioId = document.getElementById('filterUsuarioIntento')?.value || '';
         
-        let url = `../api/api.php?action=get_intentos_ofensivos&token=${token}&limit=${limiteIntentos}&offset=${paginaIntentos * limiteIntentos}`;
+        // IMPORTANTE: Aumentar el límite para obtener más intentos y poder agrupar correctamente
+        // Esto evita que un usuario con muchos intentos aparezca dividido en múltiples páginas
+        const limiteParaAgrupacion = limiteIntentos * 3; // Obtener 3 veces más para agrupar mejor
+        
+        let url = `${getApiBaseUrl()}?action=get_intentos_ofensivos&token=${token}&limit=${limiteParaAgrupacion}&offset=${paginaIntentos * limiteIntentos}`;
         if (tipoIntento) url += `&tipo_intento=${tipoIntento}`;
         if (usuarioId) url += `&usuario_id=${usuarioId}`;
-        
-        console.log('🔍 [Intentos Ofensivos] URL:', url);
-        
+
         const response = await fetch(url);
         const data = await response.json();
-        
-        console.log('📊 [Intentos Ofensivos] Respuesta:', data);
-        
+
         if (data.success) {
             intentosOfensivos = data.intentos || [];
-            console.log(`✅ [Intentos Ofensivos] Cargados ${intentosOfensivos.length} intentos`);
+
+            // Agrupar los intentos primero
+            const intentosAgrupados = agruparIntentos(intentosOfensivos);
+            const gruposArray = Object.values(intentosAgrupados);
+            
+            // Ordenar grupos por cantidad de intentos (mayor primero) para mostrar los más problemáticos primero
+            gruposArray.sort((a, b) => b.length - a.length);
+            
+            // Paginar los GRUPOS agrupados, no los intentos individuales
+            const gruposPorPagina = limiteIntentos;
+            const inicioGrupo = paginaIntentos * gruposPorPagina;
+            const finGrupo = inicioGrupo + gruposPorPagina;
+            const gruposParaMostrar = gruposArray.slice(inicioGrupo, finGrupo);
+            
+            // Desagrupar los grupos seleccionados para renderizar
+            const intentosParaRenderizar = gruposParaMostrar.flat();
+
             if (typeof renderIntentosOfensivos === 'function') {
-                renderIntentosOfensivos(intentosOfensivos);
+                renderIntentosOfensivos(intentosParaRenderizar, gruposArray.length);
             }
             if (typeof actualizarPaginacionIntentos === 'function') {
-                actualizarPaginacionIntentos(data.total, data.offset || (paginaIntentos * limiteIntentos), data.limit || limiteIntentos);
+                // Usar el total de GRUPOS para la paginación, no el total de intentos
+                actualizarPaginacionIntentos(gruposArray.length, inicioGrupo, gruposPorPagina);
             }
         } else {
-            console.error('❌ [Intentos Ofensivos] Error en respuesta:', data.message);
+
             tbody.innerHTML = `<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error: ${data.message}</td></tr>`;
         }
     } catch (error) {
-        console.error('❌ [Intentos Ofensivos] Error al cargar:', error);
+
         tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error de conexión: ' + error.message + '</td></tr>';
     }
 };
 
 // Verificación INMEDIATA después de definir la función
-console.log('✅ [Admin.js] Función loadIntentosOfensivos definida al inicio del archivo');
-console.log('✅ [Admin.js] Verificación inmediata - window.loadIntentosOfensivos:', typeof window.loadIntentosOfensivos);
+
 if (typeof window.loadIntentosOfensivos !== 'function') {
-    console.error('❌ [Admin.js] ERROR CRÍTICO: La función NO se definió correctamente!');
+
 } else {
-    console.log('✅ [Admin.js] La función está correctamente definida en window');
+
 }
 
 // Verificar que el usuario es administrador
 document.addEventListener('DOMContentLoaded', async () => {
-    // Cargar el sistema de autenticación de admin
-    if (typeof window.adminAuthSystem === 'undefined') {
-        // Si no está cargado, cargarlo dinámicamente
-        const script = document.createElement('script');
-        script.src = '../assets/js/admin-auth.js';
-        script.onload = () => {
+
+    // FALLBACK: Intentar cargar dashboard directamente después de un delay
+    setTimeout(() => {
+
+        if (typeof loadDashboard === 'function') {
+
+            loadDashboard().catch(error => {
+
+            });
+        } else {
+
+        }
+    }, 2000);
+
+    try {
+        // Cargar el sistema de autenticación de admin
+        if (typeof window.adminAuthSystem === 'undefined') {
+
+            // Si no está cargado, cargarlo dinámicamente
+            const script = document.createElement('script');
+            script.src = '../assets/js/admin-auth.js';
+            script.onload = () => {
+
+                checkAdminAccess();
+            };
+            script.onerror = () => {
+
+            };
+            document.head.appendChild(script);
+        } else {
+
             checkAdminAccess();
-        };
-        document.head.appendChild(script);
-    } else {
-        checkAdminAccess();
+        }
+    } catch (error) {
+
     }
 });
 
+// Función helper para obtener la URL base de la API según el entorno
+function getApiBaseUrl() {
+    const currentUrl = window.location.href.toLowerCase();
+    const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                       currentUrl.indexOf('hostingersite.com') !== -1 ||
+                       currentUrl.indexOf('organicjournal.com.mx') !== -1;
+    
+    return isHostinger ? '/api/api.php' : '../api/api.php';
+}
+
+// Asegurar que setupTabNavigation se ejecute después de que todo esté listo
+function ensureTabNavigation() {
+    // Intentar múltiples veces si es necesario
+    const tabs = document.querySelectorAll('.nav-tab');
+    if (tabs.length === 0) {
+
+        setTimeout(ensureTabNavigation, 500);
+        return;
+    }
+
+    // Verificar que las funciones estén disponibles antes de continuar
+    if (typeof setupTabNavigation !== 'function') {
+
+        setTimeout(ensureTabNavigation, 500);
+        return;
+    }
+    
+    setupTabNavigation();
+}
+
 async function checkAdminAccess() {
+
     // Verificar autenticación de administrador
+
     if (!window.adminAuthSystem || !window.adminAuthSystem.isAuthenticated()) {
+
         alert('Debes iniciar sesión como administrador para acceder a este panel');
         window.location.href = 'admin-login.html';
         return false;
     }
-    
+
     // Verificar token con el servidor
     const token = window.adminAuthSystem.getToken();
+
     try {
-        const response = await fetch(`../api/api.php?action=verify_admin_session&token=${token}`);
+        const apiUrl = `${getApiBaseUrl()}?action=verify_admin_session&token=${token}`;
+
+        const response = await fetch(apiUrl);
         const data = await response.json();
-        
+
         if (!data.success) {
+
             alert('Tu sesión de administrador ha expirado. Por favor, inicia sesión nuevamente.');
             window.adminAuthSystem.logout();
             window.location.href = 'admin-login.html';
             return false;
         }
+
     } catch (error) {
-        console.error('Error al verificar sesión:', error);
+
         alert('Error al verificar tu sesión. Por favor, intenta nuevamente.');
         window.location.href = 'admin-login.html';
         return false;
     }
     
-    // Mostrar nombre de administrador
-    const admin = window.adminAuthSystem.getCurrentAdmin();
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl && admin) {
-        userNameEl.textContent = admin.nombre;
+    // Mostrar nombre de administrador - EJECUTAR CON MÚLTIPLES REINTENTOS
+    function updateUserName() {
+        try {
+            const userNameEl = document.getElementById('userName');
+            if (!userNameEl) {
+
+                setTimeout(updateUserName, 200);
+                return;
+            }
+            
+            if (!window.adminAuthSystem) {
+
+                setTimeout(updateUserName, 200);
+                return;
+            }
+            
+            const admin = window.adminAuthSystem.getCurrentAdmin();
+
+            if (admin && admin.nombre) {
+                userNameEl.textContent = admin.nombre;
+
+                return; // Éxito, no reintentar
+            } else if (admin && admin.email) {
+                userNameEl.textContent = admin.email.split('@')[0];
+
+                return; // Éxito, no reintentar
+            } else {
+                userNameEl.textContent = 'Administrador';
+
+                return; // Fallback aplicado, no reintentar
+            }
+        } catch (error) {
+
+            const userNameEl = document.getElementById('userName');
+            if (userNameEl) {
+                userNameEl.textContent = 'Administrador';
+            }
+        }
+    }
+    
+    // Ejecutar inmediatamente y con múltiples reintentos (hasta 10 veces)
+    updateUserName();
+    setTimeout(updateUserName, 100);
+    setTimeout(updateUserName, 300);
+    setTimeout(updateUserName, 600);
+    setTimeout(updateUserName, 1000);
+    setTimeout(updateUserName, 1500);
+    setTimeout(updateUserName, 2000);
+    setTimeout(updateUserName, 3000);
+    
+    // Badge de notificaciones de solicitudes (llega a todos los admins)
+    if (typeof actualizarBadgeNotificacionesSolicitudes === 'function') {
+        actualizarBadgeNotificacionesSolicitudes();
+        setInterval(actualizarBadgeNotificacionesSolicitudes, 60000); // actualizar cada minuto
     }
     
     // Inicializar el panel
-    initializeAdmin();
+
+    if (typeof initializeAdmin !== 'function') {
+
+        // Intentar cargar dashboard directamente como último recurso
+        setTimeout(() => {
+            if (typeof loadDashboard === 'function') {
+
+                loadDashboard();
+            }
+        }, 1000);
+        return false;
+    }
+    
+    try {
+        initializeAdmin();
+
+    } catch (error) {
+
+    }
+    
     return true;
 }
 
 function initializeAdmin() {
-    console.log('🔧 [Admin] ========== INICIALIZANDO PANEL ==========');
-    console.log('🔧 [Admin] Inicializando panel de administración...');
-    setupTabNavigation();
+
+    // Asegurar que los tabs estén disponibles antes de registrar listeners
+    // Esperar más tiempo para asegurar que todas las funciones estén cargadas
+    setTimeout(() => {
+
+        ensureTabNavigation();
+    }, 500);
     
     // Limpiar marcador de edición cuando se regresa al panel
     sessionStorage.removeItem('editingFromAdmin');
     sessionStorage.removeItem('editingRecord');
     
-    // Verificar token antes de iniciar IA
-    console.log('🔧 [Admin] Verificando adminAuthSystem:', typeof window.adminAuthSystem);
-    const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
-    console.log('🔧 [Admin] Token disponible:', token ? 'SÍ (longitud: ' + token.length + ')' : 'NO');
+    // IA AUTÓNOMA DESACTIVADA
+    // 
+    // const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    // ' : 'NO');
     
-    // Iniciar IA autónoma automáticamente al cargar el panel
-    console.log('🔧 [Admin] Inicializando IA autónoma...');
-    initIAAutonoma();
-    
-    // Esperar un momento para asegurar que el token esté disponible
-    console.log('🔧 [Admin] Programando inicio de análisis en 500ms...');
-    setTimeout(() => {
-        console.log('🔧 [Admin] ========== TIMEOUT EJECUTADO ==========');
-        console.log('🔧 [Admin] Iniciando análisis automático de IA...');
-        console.log('🔧 [Admin] Verificando funciones:', {
-            iniciarIAAutonoma: typeof iniciarIAAutonoma,
-            analizarUsuariosConIA: typeof window.analizarUsuariosConIA
+    // Cargar datos principales del panel - SOLO DASHBOARD
+
+    if (typeof loadDashboard === 'function') {
+        loadDashboard().catch(err => {
+
         });
-        iniciarIAAutonoma();
-    }, 500);
+    } else {
+
+    }
+    
+    // NO cargar las demás secciones automáticamente - solo cuando se haga clic en las pestañas
+    // Esto evita cargas innecesarias y problemas de timing
     
     // Verificar si hay hash en la URL para activar una pestaña específica
     const hash = window.location.hash.replace('#', '');
     if (hash) {
-        // Activar la pestaña especificada en el hash
         const targetTab = document.querySelector(`[data-tab="${hash}"]`);
         if (targetTab) {
             targetTab.click();
-        } else {
-            // Si no se encuentra, cargar dashboard por defecto
-            loadDashboard();
         }
-    } else {
-        loadDashboard();
     }
     
     setupEventListeners();
     // Cargar categorías al inicializar para que estén disponibles en los filtros
     loadCategorias();
+
 }
 
-function setupTabNavigation() {
-    const tabs = document.querySelectorAll('.nav-tab');
-    const sections = document.querySelectorAll('.admin-section');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.tab;
-            
-            // Remover active de todos
-            tabs.forEach(t => t.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
-            
-            // Agregar active al seleccionado
-            tab.classList.add('active');
-            const targetSection = document.getElementById(targetTab);
-            if (targetSection) {
-                targetSection.classList.add('active');
-                
-                // Cargar contenido según la pestaña
-                switch(targetTab) {
-                    case 'dashboard':
-                        loadDashboard();
-                        break;
-                    case 'usuarios':
-                        loadUsuarios();
-                        break;
-                    case 'registros':
-                        loadAllRegistros();
-                        // Cargar categorías para el filtro si no están cargadas
-                        if (!allCategorias || allCategorias.length === 0) {
-                            loadCategorias();
-                        }
-                        break;
-                    case 'categorias':
-                        loadCategorias();
-                        break;
-                    case 'comentarios':
-                        loadComentarios();
-                        break;
-                    case 'ia-autonoma':
-                        // La IA ya está activa automáticamente, pero ejecutar análisis inmediato al abrir la pestaña
-                        console.log('🔍 [IA Autónoma] ========== PESTAÑA ABIERTA ==========');
-                        console.log('🔍 [IA Autónoma] Pestaña abierta, ejecutando análisis inmediato...');
-                        console.log('🔍 [IA Autónoma] adminAuthSystem disponible:', typeof window.adminAuthSystem);
-                        console.log('🔍 [IA Autónoma] analizarUsuariosConIA disponible:', typeof window.analizarUsuariosConIA);
-                        // Esperar un momento para asegurar que la sección esté visible
-                        setTimeout(() => {
-                            console.log('🔍 [IA Autónoma] Ejecutando dentro del setTimeout...');
-                            actualizarUltimaRevision();
-                            renderNotificacionesIA();
-                            renderHistorialIA();
-                            // Ejecutar análisis inmediato para detectar nuevos intentos
-                            const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
-                            console.log('🔍 [IA Autónoma] Token obtenido en pestaña:', token ? 'SÍ' : 'NO');
-                            if (token && typeof window.analizarUsuariosConIA === 'function') {
-                                console.log('🚀 [IA Autónoma] Ejecutando análisis desde pestaña...');
-                                window.analizarUsuariosConIA(true).catch(error => {
-                                    console.error('❌ [IA Autónoma] Error en análisis al abrir pestaña:', error);
-                                    console.error('❌ [IA Autónoma] Stack:', error.stack);
-                                });
-                            } else {
-                                console.error('❌ [IA Autónoma] No se puede ejecutar análisis:', {
-                                    tieneToken: !!token,
-                                    tieneFuncion: typeof window.analizarUsuariosConIA === 'function'
-                                });
-                            }
-                        }, 200);
-                        break;
-                    case 'intentos-ofensivos':
-                        loadIntentosOfensivos();
-                        break;
-                    case 'apelaciones':
-                        loadApelaciones();
-                        break;
+// Función GLOBAL para manejar clicks en tabs (disponible desde HTML onclick)
+window.handleTabClick = function handleTabClick(tabId) {
+
+    try {
+        // Remover active de todos los tabs y secciones
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.admin-section').forEach(s => {
+            s.classList.remove('active');
+        });
+        
+        // Buscar el tab y la sección
+        const tab = document.querySelector(`[data-tab="${tabId}"]`);
+        const section = document.getElementById(tabId);
+        
+        if (!tab) {
+
+            alert('Error: Tab no encontrado. Recarga la página.');
+            return;
+        }
+        
+        if (!section) {
+
+            alert('Error: Sección no encontrada. Recarga la página.');
+            return;
+        }
+        
+        // Agregar active al tab y sección
+        tab.classList.add('active');
+        section.classList.add('active');
+
+        // Ejecutar función según el tab
+        try {
+            if (tabId === 'dashboard') {
+
+                if (typeof loadDashboard === 'function') {
+                    loadDashboard();
+                } else {
+
+                }
+            } else if (tabId === 'usuarios') {
+
+                if (typeof window.loadUsuarios === 'function') {
+                    window.loadUsuarios().catch(err => {
+
+                    });
+                } else {
+
+                    alert('Error: La función loadUsuarios no está disponible. Recarga la página (Ctrl+F5).');
+                }
+            } else if (tabId === 'registros') {
+
+                if (typeof window.loadAllRegistros === 'function') {
+                    window.loadAllRegistros().catch(err => {
+
+                    });
+                } else {
+
+                    alert('Error: La función loadAllRegistros no está disponible. Recarga la página (Ctrl+F5).');
+                }
+            } else if (tabId === 'categorias') {
+
+                if (typeof window.loadCategorias === 'function') {
+                    window.loadCategorias().catch(err => {
+
+                    });
+                } else {
+
+                    alert('Error: La función loadCategorias no está disponible. Recarga la página (Ctrl+F5).');
+                }
+            } else if (tabId === 'comentarios') {
+
+                if (typeof window.loadComentarios === 'function') {
+                    window.loadComentarios().catch(err => {
+
+                    });
+                } else {
+
+                    alert('Error: La función loadComentarios no está disponible. Recarga la página (Ctrl+F5).');
+                }
+            } else if (tabId === 'intentos-ofensivos') {
+                // Cargar intentos ofensivos, listado Bot y recomendaciones del Bot
+                if (typeof loadIntentosOfensivos === 'function') {
+                    loadIntentosOfensivos();
+                }
+                if (typeof loadDashboardIntentosOfensivos === 'function') {
+                    loadDashboardIntentosOfensivos();
+                }
+                if (typeof loadBotRecomendaciones === 'function') {
+                    loadBotRecomendaciones();
+                }
+            } else if (tabId === 'apelaciones') {
+                if (typeof window.loadApelaciones === 'function') {
+                    setTimeout(() => window.loadApelaciones(), 100);
+                } else {
+
+                }
+            } else if (tabId === 'solicitudes-grupos') {
+                // Mostrar la primera sub-pestaña por defecto
+                mostrarSubTabGrupos('solicitudes');
+                if (typeof window.cargarSolicitudesGrupos === 'function') {
+                    setTimeout(() => window.cargarSolicitudesGrupos(), 100);
+                } else {
+
                 }
             }
-        });
-    });
+        } catch (error) {
+
+            alert('Error al cargar la sección: ' + error.message);
+        }
+    } catch (error) {
+
+        alert('Error crítico: ' + error.message);
+    }
+};
+
+function setupTabNavigation() {
+
+    // Obtener todos los tabs
+    const tabs = document.querySelectorAll('.nav-tab');
+
+    if (tabs.length === 0) {
+
+        setTimeout(setupTabNavigation, 500);
+        return;
+    }
+    
+    // handleTabClick ya está disponible globalmente (definida arriba)
+    // Los onclick están en el HTML directamente
+
 }
 
 function setupEventListeners() {
@@ -308,49 +501,46 @@ function setupEventListeners() {
         }
     }
     
-    // Botones de IA Autónoma
-    // Ya no hay botón de análisis manual, se ejecuta automáticamente
-    
-    const btnLimpiarNotificaciones = document.getElementById('btnLimpiarNotificaciones');
-    if (btnLimpiarNotificaciones) {
-        btnLimpiarNotificaciones.addEventListener('click', limpiarNotificacionesIA);
-    }
+    // Botones de IA Autónoma - DESACTIVADOS
+    // const btnLimpiarNotificaciones = document.getElementById('btnLimpiarNotificaciones');
+    // if (btnLimpiarNotificaciones) {
+    //     btnLimpiarNotificaciones.addEventListener('click', limpiarNotificacionesIA);
+    // }
     
     // Botones de Intentos Ofensivos
     const btnCargarIntentos = document.getElementById('btnCargarIntentos');
-    console.log('🔍 [Setup] Buscando botón btnCargarIntentos:', btnCargarIntentos);
+
     if (btnCargarIntentos) {
-        console.log('✅ [Setup] Botón encontrado, agregando event listener');
+
         btnCargarIntentos.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log('🔘 [Click] Botón Cargar Intentos clickeado');
+
             paginaIntentos = 0;
             if (typeof window.loadIntentosOfensivos === 'function') {
                 window.loadIntentosOfensivos();
             } else if (typeof loadIntentosOfensivos === 'function') {
                 loadIntentosOfensivos();
             } else {
-                console.error('❌ [Click] Función no disponible');
+
                 alert('Error: La función no está disponible. Recarga la página.');
             }
         });
     } else {
-        console.error('❌ [Setup] NO se encontró el botón btnCargarIntentos');
+
         // Intentar nuevamente después de un delay
         setTimeout(() => {
             const btnRetry = document.getElementById('btnCargarIntentos');
             if (btnRetry) {
-                console.log('✅ [Setup Retry] Botón encontrado en segundo intento');
+
                 btnRetry.addEventListener('click', (e) => {
                     e.preventDefault();
-                    console.log('🔘 [Click] Botón Cargar Intentos clickeado (retry)');
                     paginaIntentos = 0;
                     if (typeof window.loadIntentosOfensivos === 'function') {
                         window.loadIntentosOfensivos();
                     } else if (typeof loadIntentosOfensivos === 'function') {
                         loadIntentosOfensivos();
                     } else {
-                        console.error('❌ [Click Retry] Función no disponible');
+
                         alert('Error: La función no está disponible. Recarga la página.');
                     }
                 });
@@ -373,21 +563,8 @@ function setupEventListeners() {
         });
     }
     
-    // Filtros
-    const searchUsers = document.getElementById('searchUsers');
-    if (searchUsers) {
-        searchUsers.addEventListener('input', filterUsuarios);
-    }
-    
-    const filterRol = document.getElementById('filterRol');
-    if (filterRol) {
-        filterRol.addEventListener('change', filterUsuarios);
-    }
-    
-    const filterActivo = document.getElementById('filterActivo');
-    if (filterActivo) {
-        filterActivo.addEventListener('change', filterUsuarios);
-    }
+    // Los event listeners de búsqueda de usuarios se configuran después de cargar usuarios
+    // Ver setupUserSearchListeners()
     
     // Filtros de registros
     const searchRegistros = document.getElementById('searchRegistros');
@@ -427,58 +604,310 @@ function setupEventListeners() {
         filterComentarioActivo.addEventListener('change', filterComentarios);
     }
     
-    // Botón de preview de gráficas con datos de ejemplo
-    const btnPreviewCharts = document.getElementById('btnPreviewCharts');
-    if (btnPreviewCharts) {
-        btnPreviewCharts.addEventListener('click', previewChartsWithSampleData);
-    }
 }
 
 // ==================== DASHBOARD ====================
 async function loadDashboard() {
     try {
-        const [stats, categoriasData] = await Promise.all([
-            fetch('../api/api.php?action=get_admin_stats'),
-            fetch('../api/api.php?action=get_categorias')
+        // Detectar entorno
+        const currentUrl = window.location.href.toLowerCase();
+        const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                           currentUrl.indexOf('organicjournal.com.mx') !== -1;
+        const apiBase = isHostinger ? '/api/api.php' : '../api/api.php';
+        
+        // Cargar datos
+        const [statsResponse, categoriasResponse] = await Promise.all([
+            fetch(`${apiBase}?action=get_admin_stats`),
+            fetch(`${apiBase}?action=get_categorias`)
         ]);
         
-        const statsData = await stats.json();
-        const categorias = await categoriasData.json();
-        
-        if (statsData.success) {
-            document.getElementById('statUsuarios').textContent = statsData.stats.total_usuarios || 0;
-            document.getElementById('statRegistros').textContent = statsData.stats.total_registros || 0;
-            document.getElementById('statCategorias').textContent = categorias.success ? categorias.categorias.length : 0;
-            document.getElementById('statComentarios').textContent = statsData.stats.total_comentarios || 0;
+        if (!statsResponse.ok || !categoriasResponse.ok) {
+            throw new Error('Error al cargar datos');
         }
         
-        // Cargar gráficos
-        loadCharts(statsData.stats);
+        const statsData = await statsResponse.json();
+        const categorias = await categoriasResponse.json();
+        
+        // Actualizar UI
+        if (statsData.success) {
+            const statUsuarios = document.getElementById('statUsuarios');
+            const statRegistros = document.getElementById('statRegistros');
+            const statCategorias = document.getElementById('statCategorias');
+            const statComentarios = document.getElementById('statComentarios');
+            
+            if (statUsuarios) statUsuarios.textContent = statsData.stats.total_usuarios || 0;
+            if (statRegistros) statRegistros.textContent = statsData.stats.total_registros || 0;
+            if (statCategorias) statCategorias.textContent = categorias.success ? categorias.categorias.length : 0;
+            if (statComentarios) statComentarios.textContent = statsData.stats.total_comentarios || 0;
+        }
+        loadDashboardUltimos10Intentos();
     } catch (error) {
-        console.error('Error al cargar dashboard:', error);
+
     }
 }
 
-async function loadCharts(stats) {
+async function loadDashboardUltimos10Intentos() {
+    var container = document.getElementById('dashboardUltimosIntentosOfensivos');
+    if (!container) return;
     try {
-        // Obtener datos para los gráficos
-        const response = await fetch('../api/api.php?action=get_all_registros');
+        var token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+        if (!token) {
+            container.innerHTML = '<p style="color: #718096; margin: 0;">Inicia sesión como administrador.</p>';
+            return;
+        }
+        var url = getApiBaseUrl() + '?action=get_intentos_ofensivos&token=' + encodeURIComponent(token) + '&limit=10&offset=0';
+        var response = await fetch(url);
+        var data = await response.json();
+        if (!data.success) {
+            container.innerHTML = '<p style="color: #718096; margin: 0;">' + (data.message || 'No se pudieron cargar.') + '</p>';
+            return;
+        }
+        var intentos = data.intentos || [];
+        if (intentos.length === 0) {
+            container.innerHTML = '<p style="color: #718096; margin: 0;">No hay intentos de contenido ofensivo registrados.</p>';
+            return;
+        }
+        var tipoLabel = { 'registro_usuario': 'Registro usuario', 'registro_animal': 'Registro animal', 'registro_ambiental': 'Registro ambiental' };
+        var html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+        intentos.forEach(function(i) {
+            var fecha = (i.fecha_intento || '').toString();
+            if (fecha.indexOf('T') !== -1) fecha = fecha.split('T')[0] + ' ' + fecha.split('T')[1].substring(0, 5);
+            var tipo = tipoLabel[i.tipo_intento] || i.tipo_intento || 'Otro';
+            var quien = (i.usuario_nombre || i.intento_nombre || i.intento_email || i.usuario_email || '—').toString();
+            if (quien.length > 35) quien = quien.substring(0, 32) + '...';
+            var campos = (i.campos_afectados || '—').toString();
+            if (campos.length > 40) campos = campos.substring(0, 37) + '...';
+            html += '<li style="padding: 0.65rem 0; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem;">';
+            html += '<div><span style="background: #fed7d7; color: #c53030; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + escapeHtml(tipo) + '</span>';
+            html += ' <strong style="color: #2d3748;">' + escapeHtml(quien) + '</strong>';
+            html += '<br><span style="color: #718096; font-size: 0.8rem;">' + escapeHtml(fecha) + '</span>';
+            if (campos && campos !== '—') html += ' · Campos: ' + escapeHtml(campos);
+            html += '</div></li>';
+        });
+        html += '</ul>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<p style="color: #a0aec0; margin: 0;">No se pudieron cargar.</p>';
+    }
+}
+
+// Paginación del listado "Bot – Intentos de contenido ofensivo"
+var paginaIaIntentos = 0;
+var totalIaIntentos = 0;
+var limiteIaIntentos = 15;
+
+async function loadDashboardIntentosOfensivos(pagina) {
+    if (pagina !== undefined) paginaIaIntentos = Math.max(0, parseInt(pagina, 10));
+    var containerIA = document.getElementById('iaUltimosIntentosOfensivos');
+    if (!containerIA) return;
+    function setAll(html) {
+        containerIA.innerHTML = html;
+    }
+    try {
+        var token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+        if (!token) {
+            setAll('<p style="color: #718096; margin: 0;">Inicia sesión como administrador para ver los intentos.</p>');
+            ocultarPaginacionIaIntentos();
+            return;
+        }
+        var offset = paginaIaIntentos * limiteIaIntentos;
+        var url = getApiBaseUrl() + '?action=get_intentos_ofensivos&token=' + encodeURIComponent(token) + '&limit=' + limiteIaIntentos + '&offset=' + offset;
+        var response = await fetch(url);
+        var data = await response.json();
+        if (!data.success) {
+            setAll('<p style="color: #718096; margin: 0;">' + (data.message || 'No se pudieron cargar.') + '</p>');
+            ocultarPaginacionIaIntentos();
+            return;
+        }
+        var intentos = data.intentos || [];
+        totalIaIntentos = parseInt(data.total, 10) || 0;
+        if (intentos.length === 0 && paginaIaIntentos === 0) {
+            setAll('<p style="color: #718096; margin: 0;">No hay intentos de contenido ofensivo registrados.</p>');
+            ocultarPaginacionIaIntentos();
+            return;
+        }
+        if (intentos.length === 0) {
+            paginaIaIntentos = Math.max(0, Math.ceil(totalIaIntentos / limiteIaIntentos) - 1);
+            loadDashboardIntentosOfensivos(paginaIaIntentos);
+            return;
+        }
+        var tipoLabel = { 'registro_usuario': 'Registro usuario', 'registro_animal': 'Registro animal', 'registro_ambiental': 'Registro ambiental' };
+        var html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+        intentos.forEach(function(i) {
+            var fecha = (i.fecha_intento || '').toString();
+            if (fecha.indexOf('T') !== -1) fecha = fecha.split('T')[0] + ' ' + fecha.split('T')[1].substring(0, 5);
+            var tipo = tipoLabel[i.tipo_intento] || i.tipo_intento || 'Otro';
+            var quien = (i.usuario_nombre || i.intento_nombre || i.intento_email || i.usuario_email || '—').toString();
+            if (quien.length > 35) quien = quien.substring(0, 32) + '...';
+            var campos = (i.campos_afectados || '—').toString();
+            if (campos.length > 40) campos = campos.substring(0, 37) + '...';
+            html += '<li style="padding: 0.65rem 0; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem;">';
+            html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">';
+            html += '<div><span style="background: #fed7d7; color: #c53030; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + escapeHtml(tipo) + '</span>';
+            html += ' <strong style="color: #2d3748;">' + escapeHtml(quien) + '</strong>';
+            html += '<br><span style="color: #718096; font-size: 0.8rem;">' + escapeHtml(fecha) + '</span>';
+            if (campos && campos !== '—') html += ' · Campos: ' + escapeHtml(campos);
+            html += '</div>';
+            html += '</div></li>';
+        });
+        html += '</ul>';
+        setAll(html);
+        actualizarPaginacionIaIntentos();
+    } catch (e) {
+        setAll('<p style="color: #a0aec0; margin: 0;">No se pudieron cargar los intentos ofensivos.</p>');
+        ocultarPaginacionIaIntentos();
+    }
+}
+
+function ocultarPaginacionIaIntentos() {
+    var div = document.getElementById('paginacionIaIntentos');
+    if (div) div.style.display = 'none';
+}
+
+function actualizarPaginacionIaIntentos() {
+    var div = document.getElementById('paginacionIaIntentos');
+    var info = document.getElementById('infoPaginacionIaIntentos');
+    var btnAnterior = document.getElementById('btnAnteriorIaIntentos');
+    var btnSiguiente = document.getElementById('btnSiguienteIaIntentos');
+    if (!div || !info) return;
+    if (totalIaIntentos <= limiteIaIntentos) {
+        div.style.display = totalIaIntentos > 0 ? 'flex' : 'none';
+        if (totalIaIntentos > 0) {
+            info.textContent = 'Mostrando ' + totalIaIntentos + ' de ' + totalIaIntentos + ' registros';
+            if (btnAnterior) { btnAnterior.disabled = true; btnAnterior.onclick = null; }
+            if (btnSiguiente) { btnSiguiente.disabled = true; btnSiguiente.onclick = null; }
+        }
+        return;
+    }
+    div.style.display = 'flex';
+    var totalPaginas = Math.ceil(totalIaIntentos / limiteIaIntentos);
+    var paginaActual = paginaIaIntentos + 1;
+    var desde = paginaIaIntentos * limiteIaIntentos + 1;
+    var hasta = Math.min((paginaIaIntentos + 1) * limiteIaIntentos, totalIaIntentos);
+    info.textContent = 'P\u00e1gina ' + paginaActual + ' de ' + totalPaginas + ' (registros ' + desde + '-' + hasta + ' de ' + totalIaIntentos + ')';
+    if (btnAnterior) {
+        btnAnterior.disabled = paginaActual <= 1;
+        btnAnterior.onclick = function() {
+            if (paginaIaIntentos > 0) loadDashboardIntentosOfensivos(paginaIaIntentos - 1);
+        };
+    }
+    if (btnSiguiente) {
+        btnSiguiente.disabled = paginaActual >= totalPaginas;
+        btnSiguiente.onclick = function() {
+            if (paginaIaIntentos < totalPaginas - 1) loadDashboardIntentosOfensivos(paginaIaIntentos + 1);
+        };
+    }
+}
+
+// Recomendaciones del Bot: analiza intentos ofensivos y muestra sanciones recomendadas (o aplicadas)
+window.botRecomendacionesActuales = [];
+async function loadBotRecomendaciones() {
+    var containerDashboard = document.getElementById('botRecomendacionesDashboard');
+    var containerIA = document.getElementById('botRecomendaciones');
+    var containers = [containerDashboard, containerIA].filter(Boolean);
+    if (containers.length === 0) return;
+    function setAll(html) {
+        containers.forEach(function(c) { c.innerHTML = html; });
+    }
+    try {
+        var token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+        if (!token) {
+            setAll('<p style="color: #718096; margin: 0;">Inicia sesión como administrador para ver las recomendaciones.</p>');
+            return;
+        }
+        var acciones = await analizarIntentosOfensivos(token);
+        window.botRecomendacionesActuales = acciones || [];
+        if (acciones.length === 0) {
+            setAll('<p style="color: #718096; margin: 0;">No hay recomendaciones en este momento. El bot analiza los intentos ofensivos y propondrá advertencias o bans cuando corresponda.</p>');
+            return;
+        }
+        var prioridadColor = { critica: '#c53030', alta: '#c05621', media: '#d69e2e', baja: '#2f8558' };
+        var html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+        acciones.forEach(function(accion, index) {
+            var color = prioridadColor[accion.prioridad] || '#4a5568';
+            var tipoTexto = accion.tipo === 'notificacion' ? 'Notificación' : (accion.tipo === 'ban' ? (accion.subtipo === 'permanente' ? 'Ban permanente' : 'Ban temporal (' + (accion.dias || 0) + ' días)') : 'Advertencia');
+            var quien = (accion.usuario && (accion.usuario.nombre || accion.usuario.email)) ? escapeHtml(accion.usuario.nombre || accion.usuario.email) : (accion.email ? escapeHtml(accion.email) : (accion.ip ? 'IP: ' + escapeHtml(accion.ip) : '—'));
+            html += '<li style="padding: 1rem 0; border-bottom: 1px solid #e2e8f0;">';
+            html += '<div style="border-left: 4px solid ' + color + '; padding-left: 1rem;">';
+            html += '<div style="font-weight: 600; color: #2d3748;">' + tipoTexto + '</div>';
+            html += '<div style="font-size: 0.85rem; color: #718096; margin-top: 0.25rem;">' + quien + '</div>';
+            html += '<p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">' + escapeHtml(accion.motivo) + '</p>';
+            if (accion.razonamiento) html += '<p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #718096;">' + escapeHtml(accion.razonamiento) + '</p>';
+            if (accion.tipo === 'ban' || accion.tipo === 'advertencia') {
+                var uid = accion.usuario_id || (accion.usuario && accion.usuario.id);
+                if (uid) {
+                    html += '<p style="margin: 0.5rem 0 0 0;"><button type="button" onclick="window.aplicarSancionBot(' + index + ')" style="padding: 0.4rem 0.75rem; background: #c53030; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Aplicar esta sanción</button></p>';
+                }
+            }
+            html += '</div></li>';
+        });
+        html += '</ul>';
+        setAll(html);
+    } catch (e) {
+        setAll('<p style="color: #a0aec0; margin: 0;">No se pudieron cargar las recomendaciones del bot.</p>');
+    }
+}
+
+window.aplicarSancionBot = async function(index) {
+    var accion = window.botRecomendacionesActuales[index];
+    if (!accion) return;
+    var token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    if (!token) { alert('Sesión no válida'); return; }
+    var uid = accion.usuario_id || (accion.usuario && accion.usuario.id);
+    if (!uid) { alert('Usuario no identificado'); return; }
+    try {
+        var res;
+        if (accion.tipo === 'ban') {
+            var dias = accion.subtipo === 'permanente' ? null : (accion.dias || 7);
+            res = await ejecutarBanAutomatico(uid, accion.subtipo, dias, accion.motivo, token);
+        } else if (accion.tipo === 'advertencia') {
+            res = await ejecutarAdvertenciaAutomatica(uid, accion.motivo, token);
+        } else {
+            return;
+        }
+        if (res && res.success) {
+            alert('Sanción aplicada correctamente.');
+            loadBotRecomendaciones();
+            if (typeof loadUsuarios === 'function') loadUsuarios();
+        } else {
+            alert(res && res.message ? res.message : 'Error al aplicar la sanción.');
+        }
+    } catch (err) {
+        alert('Error: ' + (err.message || err));
+    }
+};
+
+// EJECUTAR DIRECTAMENTE cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            if (typeof loadDashboard === 'function') {
+                loadDashboard();
+            }
+        }, 1000);
+    });
+} else {
+    setTimeout(() => {
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
+    }, 1000);
+}
+
+async function loadCharts(stats) {
+    if (!document.getElementById('chartCategorias') || !document.getElementById('chartMeses')) return;
+    try {
+        const response = await fetch(`${getApiBaseUrl()}?action=get_all_registros`);
         const data = await response.json();
-        
         if (data.success && data.records) {
-            const registros = data.records;
-            
-            // Gráfico de registros por categoría
-            renderChartCategorias(registros);
-            
-            // Gráfico de registros por mes
-            renderChartMeses(registros);
+            renderChartCategorias(data.records);
+            renderChartMeses(data.records);
         } else {
             document.getElementById('chartCategorias').innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No hay datos disponibles</p>';
             document.getElementById('chartMeses').innerHTML = '<p style="color: #999; text-align: center; padding: 2rem;">No hay datos disponibles</p>';
         }
     } catch (error) {
-        console.error('Error al cargar gráficos:', error);
         document.getElementById('chartCategorias').innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error al cargar gráfico</p>';
         document.getElementById('chartMeses').innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error al cargar gráfico</p>';
     }
@@ -525,8 +954,7 @@ function generateSampleData() {
 
 // Función para mostrar gráficas con datos de ejemplo
 function previewChartsWithSampleData() {
-    console.log('📊 Generando datos de ejemplo para visualización...');
-    
+
     const sampleData = generateSampleData();
     
     // Renderizar gráficas con datos de ejemplo
@@ -825,26 +1253,61 @@ function renderChartMeses(registros) {
 }
 
 // ==================== USUARIOS ====================
-async function loadUsuarios() {
+// Exportar función al scope global
+window.loadUsuarios = async function loadUsuarios() {
+
+    // Asegurar que la sección esté visible primero
+    const usuariosSection = document.getElementById('usuarios');
+    if (usuariosSection) {
+        usuariosSection.classList.add('active');
+    }
+    
+    // Esperar un momento para asegurar que el DOM esté listo
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    let tbody = document.getElementById('usuariosTableBody');
+
+    if (!tbody) {
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        tbody = document.getElementById('usuariosTableBody');
+        if (!tbody) {
+
+            alert('Error: No se pudo encontrar el elemento de usuarios. Recarga la página.');
+            return;
+        }
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">Cargando usuarios...</td></tr>';
+    
     try {
-        const response = await fetch('../api/api.php?action=get_all_usuarios');
-        const data = await response.json();
+        const apiUrl = `${getApiBaseUrl()}?action=get_all_usuarios`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
-        if (data.success) {
+        const data = await response.json();
+
+        if (data.success && data.usuarios) {
             allUsers = data.usuarios || [];
+
             renderUsuarios(allUsers);
             populateUserFilter();
+            // Configurar event listeners de búsqueda después de cargar usuarios
+            setupUserSearchListeners();
+
         } else {
-            document.getElementById('usuariosTableBody').innerHTML = 
-                '<tr><td colspan="8" class="loading">Error al cargar usuarios</td></tr>';
+
+            tbody.innerHTML = `<tr><td colspan="8" class="loading">Error: ${data.message || 'Error al cargar usuarios'}</td></tr>`;
         }
     } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-        document.getElementById('usuariosTableBody').innerHTML = 
-            '<tr><td colspan="8" class="loading">Error de conexión</td></tr>';
+
+        tbody.innerHTML = `<tr><td colspan="8" class="loading">Error de conexión: ${error.message}</td></tr>`;
     }
 }
-
 
 async function renderUsuarios(usuarios) {
     const tbody = document.getElementById('usuariosTableBody');
@@ -857,7 +1320,7 @@ async function renderUsuarios(usuarios) {
     // Cargar información de advertencias y bans para cada usuario
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
-        console.error('No hay token de administrador disponible');
+
         tbody.innerHTML = '<tr><td colspan="9" class="loading">Error: No autenticado</td></tr>';
         return;
     }
@@ -868,13 +1331,13 @@ async function renderUsuarios(usuarios) {
         }
         
         try {
-            const response = await fetch(`../api/api.php?action=get_usuario_info&token=${token}&usuario_id=${user.id}`);
+            const response = await fetch(`${getApiBaseUrl()}?action=get_usuario_info&token=${token}&usuario_id=${user.id}`);
             const data = await response.json();
             if (data.success) {
                 return { ...user, ...data };
             }
         } catch (error) {
-            console.error(`Error al cargar info de usuario ${user.id}:`, error);
+
         }
         return { ...user, advertencias: 0, bans_temporales: 0, ban_permanente: false };
     }));
@@ -924,21 +1387,73 @@ async function renderUsuarios(usuarios) {
     }).join('');
 }
 
-function filterUsuarios() {
-    const search = document.getElementById('searchUsers').value.toLowerCase();
-    const rol = document.getElementById('filterRol').value;
-    const activo = document.getElementById('filterActivo').value;
+// Configurar event listeners de búsqueda de usuarios
+function setupUserSearchListeners() {
+
+    // Remover listeners anteriores si existen
+    const searchUsers = document.getElementById('searchUsers');
+    const filterRol = document.getElementById('filterRol');
+    const filterActivo = document.getElementById('filterActivo');
     
+    if (searchUsers) {
+        // Clonar el elemento para remover listeners anteriores
+        const newSearch = searchUsers.cloneNode(true);
+        searchUsers.parentNode.replaceChild(newSearch, searchUsers);
+        newSearch.addEventListener('input', filterUsuarios);
+
+    } else {
+
+    }
+    
+    if (filterRol) {
+        const newFilterRol = filterRol.cloneNode(true);
+        filterRol.parentNode.replaceChild(newFilterRol, filterRol);
+        newFilterRol.addEventListener('change', filterUsuarios);
+
+    } else {
+
+    }
+    
+    if (filterActivo) {
+        const newFilterActivo = filterActivo.cloneNode(true);
+        filterActivo.parentNode.replaceChild(newFilterActivo, filterActivo);
+        newFilterActivo.addEventListener('change', filterUsuarios);
+
+    } else {
+
+    }
+}
+
+function filterUsuarios() {
+
+    if (!allUsers || allUsers.length === 0) {
+
+        return;
+    }
+    
+    const searchUsersEl = document.getElementById('searchUsers');
+    const filterRolEl = document.getElementById('filterRol');
+    const filterActivoEl = document.getElementById('filterActivo');
+    
+    if (!searchUsersEl || !filterRolEl || !filterActivoEl) {
+
+        return;
+    }
+    
+    const search = searchUsersEl.value.toLowerCase().trim();
+    const rol = filterRolEl.value;
+    const activo = filterActivoEl.value;
+
     let filtered = allUsers.filter(user => {
         const matchSearch = !search || 
-            user.nombre.toLowerCase().includes(search) ||
-            user.email.toLowerCase().includes(search);
+            (user.nombre && user.nombre.toLowerCase().includes(search)) ||
+            (user.email && user.email.toLowerCase().includes(search));
         const matchRol = !rol || user.rol === rol;
         const matchActivo = activo === '' || (user.activo == activo);
         
         return matchSearch && matchRol && matchActivo;
     });
-    
+
     renderUsuarios(filtered);
 }
 
@@ -1069,7 +1584,7 @@ async function handleEditUser(e) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=update_usuario&current_user_id=' + currentUser.id, {
+        const response = await fetch(`${getApiBaseUrl()}?action=update_usuario&current_user_id=` + currentUser.id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1092,7 +1607,7 @@ async function handleEditUser(e) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al actualizar usuario');
     }
 }
@@ -1114,7 +1629,7 @@ async function handleAddUser(e) {
     const rol = document.getElementById('addUserRol').value;
     
     try {
-        const response = await fetch('../api/api.php?action=create_usuario&current_user_id=' + currentUser.id, {
+        const response = await fetch(`${getApiBaseUrl()}?action=create_usuario&current_user_id=` + currentUser.id, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nombre, email, password, rol })
@@ -1130,7 +1645,7 @@ async function handleAddUser(e) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al crear usuario');
     }
 }
@@ -1144,7 +1659,7 @@ async function toggleUserStatus(userId, activo) {
     if (!currentUser) return;
     
     try {
-        const response = await fetch('../api/api.php?action=update_usuario&current_user_id=' + currentUser.id, {
+        const response = await fetch(`${getApiBaseUrl()}?action=update_usuario&current_user_id=` + currentUser.id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: userId, activo })
@@ -1158,7 +1673,7 @@ async function toggleUserStatus(userId, activo) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al actualizar usuario');
     }
 }
@@ -1168,14 +1683,17 @@ async function deleteUser(userId) {
         return;
     }
     
-    const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
-    if (!currentUser) return;
+    const adminToken = adminAuthSystem.getToken();
+    if (!adminToken) {
+        alert('No autorizado');
+        return;
+    }
     
     try {
-        const response = await fetch('../api/api.php?action=delete_usuario&current_user_id=' + currentUser.id, {
-            method: 'DELETE',
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_usuario`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: userId })
+            body: JSON.stringify({ id: userId, token: adminToken })
         });
         
         const data = await response.json();
@@ -1187,46 +1705,122 @@ async function deleteUser(userId) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al eliminar usuario');
     }
 }
 
+// Función para limpiar usuarios masivamente (dejar solo 5)
+async function limpiarUsuarios() {
+
+    if (!confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS los usuarios excepto los 5 más recientes y los administradores.\n\n¿Estás completamente seguro?')) {
+
+        return;
+    }
+    
+    if (!confirm('Esta acción NO SE PUEDE DESHACER. ¿Continuar?')) {
+
+        return;
+    }
+
+    const adminToken = window.adminAuthSystem ? window.adminAuthSystem.getToken() : (typeof adminAuthSystem !== 'undefined' ? adminAuthSystem.getToken() : null);
+    
+    if (!adminToken) {
+
+        alert('No autorizado. Por favor, inicia sesión como administrador.');
+        return;
+    }
+
+    const apiUrl = typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : '../api/api.php';
+
+    try {
+        const response = await fetch(`${apiUrl}?action=limpiar_usuarios`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: adminToken })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`✅ ${data.message}`);
+            if (typeof loadUsuarios === 'function') {
+                loadUsuarios();
+            } else if (typeof window.loadUsuarios === 'function') {
+                window.loadUsuarios();
+            }
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+
+        alert('Error al limpiar usuarios: ' + error.message);
+    }
+}
+
+// Exportar función al scope global
+window.limpiarUsuarios = limpiarUsuarios;
+
 // ==================== REGISTROS ====================
 let searchTimeout = null;
 
-async function loadAllRegistros() {
-    const grid = document.getElementById('registrosGrid');
-    if (!grid) return;
+// Exportar función al scope global
+window.loadAllRegistros = async function loadAllRegistros() {
+
+    // Asegurar que la sección esté visible primero
+    const registrosSection = document.getElementById('registros');
+    if (registrosSection) {
+        registrosSection.classList.add('active');
+    }
+    
+    // Esperar un momento para asegurar que el DOM esté listo
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    let grid = document.getElementById('registrosGrid');
+
+    if (!grid) {
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        grid = document.getElementById('registrosGrid');
+        if (!grid) {
+
+            alert('Error: No se pudo encontrar el elemento de registros. Recarga la página.');
+            return;
+        }
+    }
     
     grid.innerHTML = '<div class="loading-state">Cargando registros...</div>';
     
     try {
-        // Construir URL con filtros
         const search = document.getElementById('searchRegistros')?.value.trim() || '';
         const categoriaId = document.getElementById('filterCategoriaAdmin')?.value || '';
         const usuarioId = document.getElementById('filterUsuarioAdmin')?.value || '';
         
-        let url = '../api/api.php?action=get_all_registros';
+        let url = `${getApiBaseUrl()}?action=get_all_registros`;
         if (search) url += '&search=' + encodeURIComponent(search);
         if (categoriaId) url += '&categoria_id=' + encodeURIComponent(categoriaId);
         if (usuarioId) url += '&usuario_id=' + encodeURIComponent(usuarioId);
-        
+
         const response = await fetch(url);
-        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
-        if (data.success) {
+        const data = await response.json();
+
+        if (data.success && data.records) {
             allRegistros = data.records || [];
+
             renderRegistros(allRegistros);
+
         } else {
-            grid.innerHTML = '<div class="loading-state">Error al cargar registros: ' + (data.message || 'Error desconocido') + '</div>';
+
+            grid.innerHTML = '<div class="loading-state">Error: ' + (data.message || 'Error al cargar registros') + '</div>';
         }
     } catch (error) {
-        console.error('Error al cargar registros:', error);
-        const grid = document.getElementById('registrosGrid');
-        if (grid) {
-            grid.innerHTML = '<div class="loading-state">Error de conexión al cargar registros</div>';
-        }
+
+        grid.innerHTML = `<div class="loading-state">Error de conexión: ${error.message}</div>`;
     }
 }
 
@@ -1287,7 +1881,7 @@ function filterRegistros() {
 window.editRecordAdmin = async function editRecordAdmin(recordId) {
     try {
         // Obtener el registro completo desde la API
-        const response = await fetch(`../api/api.php?action=get_registros_ambientales&id=${recordId}`);
+        const response = await fetch(`${getApiBaseUrl()}?action=get_registros_ambientales&id=${recordId}`);
         const data = await response.json();
         
         if (data.success && data.record) {
@@ -1322,13 +1916,13 @@ window.editRecordAdmin = async function editRecordAdmin(recordId) {
             sessionStorage.setItem('editingRecord', JSON.stringify(editingRecord));
             // Marcar que viene del panel de administración
             sessionStorage.setItem('editingFromAdmin', 'true');
-            console.log('✅ Marcado editingFromAdmin = true, redirigiendo a formulario');
+
             window.location.href = 'nuevo-registro.html?edit=true';
         } else {
             alert('Error: No se pudo cargar el registro para editar');
         }
     } catch (error) {
-        console.error('Error al cargar registro para editar:', error);
+
         alert('Error de conexión al cargar el registro');
     }
 }
@@ -1336,35 +1930,32 @@ window.editRecordAdmin = async function editRecordAdmin(recordId) {
 // Función para eliminar registro desde el panel de administración
 // EXPONER EN WINDOW para que esté disponible desde onclick en HTML
 window.deleteRecordAdmin = async function deleteRecordAdmin(recordId) {
-    console.log('🔍 [deleteRecordAdmin] Iniciando eliminación del registro:', recordId);
-    
+
     if (!confirm('¿Estás seguro de eliminar este registro?')) {
         return;
     }
     
     // Verificar que adminAuthSystem existe
     if (!window.adminAuthSystem) {
-        console.error('❌ [deleteRecordAdmin] adminAuthSystem no disponible');
+
         alert('Error: Sistema de autenticación no disponible. Por favor, recarga la página.');
         return;
     }
     
     // Verificar autenticación
     const isAuth = window.adminAuthSystem.isAuthenticated();
-    console.log('🔍 [deleteRecordAdmin] isAuthenticated():', isAuth);
     if (!isAuth) {
-        console.error('❌ [deleteRecordAdmin] No autenticado');
+
         alert('Error: No estás autenticado como administrador. Por favor, inicia sesión nuevamente.');
         return;
     }
     
     // Obtener token del administrador
     const token = window.adminAuthSystem.getToken();
-    console.log('🔍 [deleteRecordAdmin] Token obtenido:', token ? token.substring(0, 30) + '...' : 'VACÍO');
     if (!token) {
-        console.error('❌ [deleteRecordAdmin] Token vacío');
+
         const session = window.adminAuthSystem.getSession();
-        console.error('❌ [deleteRecordAdmin] Sesión completa:', session);
+
         alert('Error: No se pudo obtener el token de autenticación. Por favor, recarga la página.');
         return;
     }
@@ -1374,15 +1965,9 @@ window.deleteRecordAdmin = async function deleteRecordAdmin(recordId) {
         token: token,
         is_admin: true
     };
-    
-    console.log('📤 [deleteRecordAdmin] Enviando petición:', {
-        url: '../api/api.php?action=delete_record',
-        method: 'POST',
-        body: requestBody
-    });
-    
+
     try {
-        const response = await fetch('../api/api.php?action=delete_record', {
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_record`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -1390,50 +1975,85 @@ window.deleteRecordAdmin = async function deleteRecordAdmin(recordId) {
             },
             body: JSON.stringify(requestBody)
         });
-        
-        console.log('📥 [deleteRecordAdmin] Respuesta recibida - Status:', response.status);
-        
+
         const responseText = await response.text();
-        console.log('📥 [deleteRecordAdmin] Respuesta completa:', responseText);
-        
+
         let data;
         try {
             data = JSON.parse(responseText);
-            console.log('📥 [deleteRecordAdmin] Datos parseados:', data);
+
         } catch (e) {
-            console.error('❌ [deleteRecordAdmin] Error al parsear JSON:', e);
-            console.error('❌ [deleteRecordAdmin] Respuesta recibida:', responseText);
+
             alert('Error: Respuesta inválida del servidor.');
             return;
         }
         
         if (data.success) {
-            console.log('✅ [deleteRecordAdmin] Eliminación exitosa');
+
             alert('Registro eliminado exitosamente');
             loadAllRegistros();
         } else {
-            console.error('❌ [deleteRecordAdmin] Error del servidor:', data.message);
+
             alert('Error: ' + (data.message || 'Error desconocido al eliminar el registro'));
         }
     } catch (error) {
-        console.error('❌ [deleteRecordAdmin] Error de conexión:', error);
+
         alert('Error de conexión al eliminar registro.');
     }
 }
 
 // ==================== CATEGORÍAS ====================
-async function loadCategorias() {
+// Exportar función al scope global
+window.loadCategorias = async function loadCategorias() {
+
+    // Asegurar que la sección esté visible primero
+    const categoriasSection = document.getElementById('categorias');
+    if (categoriasSection) {
+        categoriasSection.classList.add('active');
+    }
+    
+    // Esperar un momento para asegurar que el DOM esté listo
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    let container = document.getElementById('categoriasContainer');
+
+    if (!container) {
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        container = document.getElementById('categoriasContainer');
+        if (!container) {
+
+            alert('Error: No se pudo encontrar el elemento de categorías. Recarga la página.');
+            return;
+        }
+    }
+    
+    container.innerHTML = '<div class="loading-state">Cargando categorías...</div>';
+    
     try {
-        const response = await fetch('../api/api.php?action=get_categorias');
-        const data = await response.json();
+        const apiUrl = `${getApiBaseUrl()}?action=get_categorias`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
+        const data = await response.json();
+
         if (data.success && data.categorias) {
             allCategorias = data.categorias;
+
             renderCategorias(allCategorias);
             populateCategoriaFilter();
+
+        } else {
+
+            container.innerHTML = `<div class="loading-state">Error: ${data.message || 'Error al cargar categorías'}</div>`;
         }
     } catch (error) {
-        console.error('Error al cargar categorías:', error);
+
+        container.innerHTML = `<div class="loading-state">Error de conexión: ${error.message}</div>`;
     }
 }
 
@@ -1495,7 +2115,7 @@ function renderCategorias(categorias) {
 
 async function loadSubcategoriasForCategoria(categoriaId) {
     try {
-        const response = await fetch(`../api/api.php?action=get_subcategorias&categoria_id=${categoriaId}`);
+        const response = await fetch(`${getApiBaseUrl()}?action=get_subcategorias&categoria_id=${categoriaId}`);
         const data = await response.json();
         
         const container = document.getElementById(`subcategorias-${categoriaId}`);
@@ -1525,7 +2145,7 @@ async function loadSubcategoriasForCategoria(categoriaId) {
             container.innerHTML = '<p style="color: #999; font-size: 0.85rem; font-style: italic;">No hay subcategorías</p>';
         }
     } catch (error) {
-        console.error('Error al cargar subcategorías:', error);
+
         const container = document.getElementById(`subcategorias-${categoriaId}`);
         if (container) {
             container.innerHTML = '<p style="color: #d32f2f; font-size: 0.85rem;">Error al cargar subcategorías</p>';
@@ -1558,26 +2178,56 @@ function showAddCategoriaModal() {
 }
 
 // ==================== COMENTARIOS ====================
-async function loadComentarios() {
+// Exportar función al scope global
+window.loadComentarios = async function loadComentarios() {
+
+    // Asegurar que la sección esté visible primero
+    const comentariosSection = document.getElementById('comentarios');
+    if (comentariosSection) {
+        comentariosSection.classList.add('active');
+    }
+    
+    // Esperar un momento para asegurar que el DOM esté listo
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    let container = document.getElementById('comentariosContainer');
+
+    if (!container) {
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        container = document.getElementById('comentariosContainer');
+        if (!container) {
+
+            alert('Error: No se pudo encontrar el elemento de comentarios. Recarga la página.');
+            return;
+        }
+    }
+    
+    container.innerHTML = '<div class="loading-state">Cargando comentarios...</div>';
+    
     try {
-        const response = await fetch('../api/api.php?action=get_all_comentarios');
-        const data = await response.json();
+        const apiUrl = `${getApiBaseUrl()}?action=get_all_comentarios`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
+        const data = await response.json();
+
         if (data.success) {
             allComentarios = data.comentarios || [];
+
             renderComentarios(allComentarios);
+
         } else {
-            const container = document.getElementById('comentariosContainer');
-            if (container) {
-                container.innerHTML = '<div class="empty-state"><h3>Error al cargar comentarios</h3></div>';
-            }
+
+            container.innerHTML = `<div class="empty-state"><h3>Error: ${data.message || 'Error al cargar comentarios'}</h3></div>`;
         }
     } catch (error) {
-        console.error('Error al cargar comentarios:', error);
-        const container = document.getElementById('comentariosContainer');
-        if (container) {
-            container.innerHTML = '<div class="empty-state"><h3>Error de conexión</h3></div>';
-        }
+
+        container.innerHTML = `<div class="empty-state"><h3>Error de conexión: ${error.message}</h3></div>`;
     }
 }
 
@@ -1633,7 +2283,7 @@ async function toggleComentario(id, activo) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=update_comentario', {
+        const response = await fetch(`${getApiBaseUrl()}?action=update_comentario`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, activo: activo ? 1 : 0 })
@@ -1648,7 +2298,7 @@ async function toggleComentario(id, activo) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al actualizar comentario');
     }
 }
@@ -1659,7 +2309,7 @@ async function deleteComentario(id) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=delete_comentario', {
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_comentario`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
@@ -1674,7 +2324,7 @@ async function deleteComentario(id) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al eliminar comentario');
     }
 }
@@ -1752,13 +2402,6 @@ async function showAdvertenciaModal(usuarioId) {
     document.getElementById('advertenciaUsuarioNombre').value = `${user.nombre} (${user.email})`;
     document.getElementById('advertenciaMotivo').value = '';
     
-    // Ocultar sugerencia IA inicialmente
-    const aiSuggestionDiv = document.getElementById('aiSuggestionAdvertencia');
-    if (aiSuggestionDiv) aiSuggestionDiv.style.display = 'none';
-    
-    // Cargar sugerencia IA
-    await loadAISuggestionAdvertencia(usuarioId);
-    
     openModal('advertenciaModal');
 }
 
@@ -1780,7 +2423,7 @@ async function handleDarAdvertencia(e) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=dar_advertencia', {
+        const response = await fetch(`${getApiBaseUrl()}?action=dar_advertencia`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, usuario_id: usuarioId, motivo })
@@ -1796,7 +2439,7 @@ async function handleDarAdvertencia(e) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión');
     }
 }
@@ -1811,76 +2454,96 @@ async function showBanModal(usuarioId) {
     document.getElementById('banDias').value = 7;
     document.getElementById('banMotivo').value = '';
     
-    // Ocultar sugerencia IA inicialmente
-    document.getElementById('aiSuggestionBan').style.display = 'none';
-    
-    // Cargar sugerencia IA
-    await loadAISuggestionBan(usuarioId);
-    
     updateBanDiasVisibility();
     openModal('banModal');
 }
 
 function updateBanDiasVisibility() {
-    const tipo = document.getElementById('banTipo').value;
+    const banTipo = document.getElementById('banTipo');
     const diasGroup = document.getElementById('banDiasGroup');
+    const banDias = document.getElementById('banDias');
+    
+    if (!banTipo || !diasGroup || !banDias) {
+
+        return;
+    }
+    
+    const tipo = banTipo.value;
+
     if (tipo === 'permanente') {
         diasGroup.style.display = 'none';
-        document.getElementById('banDias').removeAttribute('required');
+        banDias.removeAttribute('required');
+        banDias.value = ''; // Limpiar el valor cuando es permanente
+
     } else {
         diasGroup.style.display = 'block';
-        document.getElementById('banDias').setAttribute('required', 'required');
+        banDias.setAttribute('required', 'required');
+        if (!banDias.value || banDias.value === '') {
+            banDias.value = '7'; // Valor por defecto si está vacío
+        }
+
     }
 }
 
 async function handleDarBan(e) {
     e.preventDefault();
-    
+    e.stopPropagation();
+
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
         alert('No estás autenticado');
-        return;
+        return false;
     }
     
     const usuarioId = document.getElementById('banUsuarioId').value;
     const tipo = document.getElementById('banTipo').value;
     const dias = tipo === 'temporal' ? parseInt(document.getElementById('banDias').value) : null;
     const motivo = document.getElementById('banMotivo').value.trim();
-    
+
     if (!motivo) {
         alert('Debes especificar un motivo');
-        return;
+        return false;
     }
     
     if (tipo === 'temporal' && (!dias || dias < 1)) {
         alert('Debes especificar una duración válida');
-        return;
+        return false;
+    }
+    
+    if (tipo === 'permanente' && dias) {
+
+        // No hacer nada, simplemente ignorar el valor de días
     }
     
     if (!confirm(`¿Estás seguro de aplicar un ban ${tipo === 'permanente' ? 'permanente' : `temporal de ${dias} días`} a este usuario?`)) {
-        return;
+        return false;
     }
     
     try {
-        const response = await fetch('../api/api.php?action=dar_ban', {
+
+        const response = await fetch(`${getApiBaseUrl()}?action=dar_ban`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, usuario_id: usuarioId, tipo, dias, motivo })
+            body: JSON.stringify({ token, usuario_id: usuarioId, tipo, dias: tipo === 'temporal' ? dias : null, motivo })
         });
         
         const data = await response.json();
-        
+
         if (data.success) {
             alert(data.message);
             closeModal('banModal');
-            loadUsuarios();
+            // Recargar usuarios sin cambiar de sección
+            await loadUsuarios();
+
         } else {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión');
     }
+    
+    return false; // Prevenir cualquier redirección
 }
 
 async function showUsuarioSanciones(usuarioId) {
@@ -1904,7 +2567,7 @@ async function showUsuarioSanciones(usuarioId) {
     
     // Cargar información del usuario
     try {
-        const infoResponse = await fetch(`../api/api.php?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`);
+        const infoResponse = await fetch(`${getApiBaseUrl()}?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`);
         const infoData = await infoResponse.json();
         
         if (infoData.success) {
@@ -1919,12 +2582,12 @@ async function showUsuarioSanciones(usuarioId) {
             document.getElementById('sancionesUsuarioInfo').innerHTML = infoHtml;
         }
     } catch (error) {
-        console.error('Error:', error);
+
     }
     
     // Cargar advertencias
     try {
-        const advertenciasResponse = await fetch(`../api/api.php?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`);
+        const advertenciasResponse = await fetch(`${getApiBaseUrl()}?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`);
         const advertenciasData = await advertenciasResponse.json();
         
         if (advertenciasData.success) {
@@ -1945,13 +2608,13 @@ async function showUsuarioSanciones(usuarioId) {
             document.getElementById('sancionesAdvertencias').innerHTML = advertenciasHtml;
         }
     } catch (error) {
-        console.error('Error:', error);
+
         document.getElementById('sancionesAdvertencias').innerHTML = '<p style="color: #d32f2f;">Error al cargar advertencias</p>';
     }
     
     // Cargar bans
     try {
-        const bansResponse = await fetch(`../api/api.php?action=listar_bans&token=${token}&usuario_id=${usuarioId}`);
+        const bansResponse = await fetch(`${getApiBaseUrl()}?action=listar_bans&token=${token}&usuario_id=${usuarioId}`);
         const bansData = await bansResponse.json();
         
         if (bansData.success) {
@@ -1994,7 +2657,7 @@ async function showUsuarioSanciones(usuarioId) {
             document.getElementById('sancionesBans').innerHTML = bansHtml;
         }
     } catch (error) {
-        console.error('Error:', error);
+
         document.getElementById('sancionesBans').innerHTML = '<p style="color: #d32f2f;">Error al cargar bans</p>';
     }
     
@@ -2011,7 +2674,7 @@ async function eliminarAdvertencia(advertenciaId) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=eliminar_advertencia', {
+        const response = await fetch(`${getApiBaseUrl()}?action=eliminar_advertencia`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, advertencia_id: advertenciaId })
@@ -2034,7 +2697,7 @@ async function eliminarAdvertencia(advertenciaId) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión');
     }
 }
@@ -2049,7 +2712,7 @@ async function eliminarBan(banId) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=eliminar_ban', {
+        const response = await fetch(`${getApiBaseUrl()}?action=eliminar_ban`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, ban_id: banId })
@@ -2072,19 +2735,38 @@ async function eliminarBan(banId) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión');
     }
 }
 
 // ==================== SISTEMA DE APELACIONES ====================
 
-async function loadApelaciones() {
+// Exportar función al scope global para que pueda ser llamada desde onclick
+window.loadApelaciones = async function loadApelaciones() {
+
+    // Asegurarse de que la sección de apelaciones esté visible
+    const apelacionesSection = document.getElementById('apelaciones');
+    if (apelacionesSection) {
+        apelacionesSection.classList.add('active');
+        // También activar la pestaña correspondiente
+        const apelacionesTab = document.querySelector('[data-tab="apelaciones"]');
+        if (apelacionesTab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            apelacionesTab.classList.add('active');
+        }
+    }
+    
     const apelacionesList = document.getElementById('apelacionesList');
-    if (!apelacionesList) return;
+    if (!apelacionesList) {
+
+        alert('Error: No se encontró el contenedor de apelaciones. Asegúrate de estar en la pestaña de Apelaciones.');
+        return;
+    }
     
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
+
         apelacionesList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: No autenticado</p>';
         return;
     }
@@ -2093,12 +2775,16 @@ async function loadApelaciones() {
     
     try {
         const estado = document.getElementById('filterEstadoApelacion')?.value || '';
-        let url = `../api/api.php?action=listar_apelaciones&token=${token}`;
+        
+        let url = `${getApiBaseUrl()}?action=listar_apelaciones&token=${token}`;
         if (estado) url += `&estado=${estado}`;
         
         const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
-        
+
         if (data.success) {
             const apelaciones = data.apelaciones || [];
             
@@ -2174,18 +2860,23 @@ async function loadApelaciones() {
             }).join('');
             
             apelacionesList.innerHTML = apelacionesHtml;
+
         } else {
-            apelacionesList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${data.message}</p>`;
+
+            apelacionesList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${data.message || 'Error desconocido'}</p>`;
         }
     } catch (error) {
-        console.error('Error:', error);
-        apelacionesList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error de conexión</p>';
+
+        const errorMsg = error.message || 'Error de conexión';
+        apelacionesList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${errorMsg}</p>`;
     }
 }
 
-async function resolverApelacion(apelacionId, accion) {
+// Verificar que la función esté disponible globalmente
+
+window.resolverApelacion = async function resolverApelacion(apelacionId, accion) {
     const mensaje = accion === 'aprobar' 
-        ? '¿Estás seguro de aprobar esta apelación y desbanear al usuario? Esta será su última oportunidad.'
+        ? '¿Estás seguro de aprobar esta apelación y desbanear al usuario? El usuario puede apelar hasta 3 veces en total.'
         : '¿Estás seguro de rechazar esta apelación?';
     
     if (!confirm(mensaje)) return;
@@ -2197,7 +2888,7 @@ async function resolverApelacion(apelacionId, accion) {
     }
     
     try {
-        const response = await fetch('../api/api.php?action=resolver_apelacion', {
+        const response = await fetch(`${getApiBaseUrl()}?action=resolver_apelacion`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2217,22 +2908,917 @@ async function resolverApelacion(apelacionId, accion) {
             alert('Error: ' + data.message);
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error de conexión');
     }
 }
 
+// ==================== SOLICITUDES DE ACCESO A GRUPOS ====================
 
-// ==================== ASISTENTE IA PARA MODERACIÓN ====================
+// Actualizar badge de notificaciones no leídas (llega a todos los admins)
+window.actualizarBadgeNotificacionesSolicitudes = async function actualizarBadgeNotificacionesSolicitudes() {
+    if (!window.adminAuthSystem || !window.adminAuthSystem.isAuthenticated()) return;
+    const token = window.adminAuthSystem.getToken();
+    if (!token) return;
+    try {
+        const url = `${getApiBaseUrl()}?action=get_notificaciones_solicitudes_count&token=${encodeURIComponent(token)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const count = (data.success && data.count != null) ? parseInt(data.count, 10) : 0;
+        const badge = document.getElementById('solicitudesGruposBadge');
+        const badgeSub = document.getElementById('solicitudesGruposBadgeSub');
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+        if (badgeSub) {
+            if (count > 0) {
+                badgeSub.textContent = count;
+                badgeSub.style.display = 'inline-block';
+            } else {
+                badgeSub.style.display = 'none';
+            }
+        }
+    } catch (e) { /* ignorar */ }
+};
 
-async function loadAISuggestionAdvertencia(usuarioId) {
-    console.log('🤖 [IA] Iniciando carga de sugerencia de advertencia para usuario:', usuarioId);
+window.cargarSolicitudesGrupos = async function cargarSolicitudesGrupos() {
+
+    const solicitudesList = document.getElementById('solicitudesGruposList');
+    if (!solicitudesList) {
+
+        alert('Error: No se encontró el contenedor de solicitudes.');
+        return;
+    }
     
+    solicitudesList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Cargando solicitudes...</p>';
+    
+    try {
+        const estadoFiltro = document.getElementById('filterEstadoSolicitud')?.value || '';
+        
+        // MODO LOCAL - Leer desde localStorage
+        let solicitudes = JSON.parse(localStorage.getItem('solicitudesGrupos') || '[]');
+        
+        // Filtrar por estado si se seleccionó
+        if (estadoFiltro) {
+            solicitudes = solicitudes.filter(s => s.estado_solicitud === estadoFiltro);
+        }
+        
+        // Ordenar por fecha (más recientes primero)
+        solicitudes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        
+        const data = { success: true, solicitudes: solicitudes };
+        
+        // MODO PRODUCCIÓN - Descomentar para usar API
+        // let url = `${getApiBaseUrl()}?action=get_solicitudes_acceso`;
+        // if (estadoFiltro) url += `&estado=${estadoFiltro}`;
+        // const response = await fetch(url);
+        // const data = await response.json();
+        
+        if (data.success) {
+            const solicitudes = data.solicitudes || [];
+            
+            // Actualizar badge de solicitudes pendientes
+            const pendientes = solicitudes.filter(s => s.estado_solicitud === 'pendiente').length;
+            const badge = document.getElementById('solicitudesGruposBadge');
+            const badgeSub = document.getElementById('solicitudesGruposBadgeSub');
+            if (badge) {
+                if (pendientes > 0) {
+                    badge.textContent = pendientes;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            if (badgeSub) {
+                if (pendientes > 0) {
+                    badgeSub.textContent = pendientes;
+                    badgeSub.style.display = 'inline-block';
+                } else {
+                    badgeSub.style.display = 'none';
+                }
+            }
+            
+            if (solicitudes.length === 0) {
+                solicitudesList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No hay solicitudes de acceso.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 1rem;">';
+            
+            solicitudes.forEach(solicitud => {
+                const fecha = new Date(solicitud.fecha);
+                const fechaSolicitud = fecha.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const estadoText = solicitud.estado_solicitud === 'aprobada' ? 'Aprobada' : solicitud.estado_solicitud === 'rechazada' ? 'Rechazada' : 'Pendiente';
+                const borderColor = solicitud.estado_solicitud === 'aprobada' ? '#4caf50' : solicitud.estado_solicitud === 'rechazada' ? '#f44336' : '#ff9800';
+                const bgColor = solicitud.estado_solicitud === 'aprobada' ? '#e8f5e9' : solicitud.estado_solicitud === 'rechazada' ? '#ffebee' : '#fff3e0';
+                const textColor = solicitud.estado_solicitud === 'aprobada' ? '#2e7d32' : solicitud.estado_solicitud === 'rechazada' ? '#c62828' : '#e65100';
+                
+                html += `
+                    <div style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid ${borderColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="margin: 0 0 0.5rem 0; color: #333;">${solicitud.nombre || 'Sin nombre'}</h3>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">ID: ${solicitud.id}</p>
+                            </div>
+                            <span style="padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; background: ${bgColor}; color: ${textColor};">
+                                ${estadoText}
+                            </span>
+                        </div>
+                        
+                        <p style="margin: 0.5rem 0; color: #666;">
+                            <strong>📍 Ubicación:</strong> 
+                            ${solicitud.estado || 'N/A'}${solicitud.municipio ? ', ' + solicitud.municipio : ''}${solicitud.ciudad ? ', ' + solicitud.ciudad : ''}
+                        </p>
+                        
+                        <p style="margin: 0.5rem 0; color: #666;"><strong>🌳 Grupo sugerido:</strong> Ejidos ${solicitud.estado || 'General'}</p>
+                        
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; font-size: 0.85rem; color: #999;">
+                            <span>📅 ${fechaSolicitud}</span>
+                        </div>
+                        
+                        ${solicitud.estado_solicitud === 'pendiente' ? `
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <button onclick="gestionarSolicitudGrupoLocal(${solicitud.id}, 'aprobar')" style="padding: 0.75rem 1.5rem; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    ✅ Aprobar
+                                </button>
+                                <button onclick="gestionarSolicitudGrupoLocal(${solicitud.id}, 'rechazar')" style="padding: 0.75rem 1.5rem; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    ❌ Rechazar
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            solicitudesList.innerHTML = html;
+            // Marcar notificaciones como leídas para este admin y actualizar badge
+            if (window.adminAuthSystem && window.adminAuthSystem.isAuthenticated()) {
+                const token = window.adminAuthSystem.getToken();
+                if (token) {
+                    try {
+                        await fetch(getApiBaseUrl(), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `action=marcar_notificaciones_solicitudes_leidas&token=${encodeURIComponent(token)}`
+                        });
+                        if (typeof actualizarBadgeNotificacionesSolicitudes === 'function') actualizarBadgeNotificacionesSolicitudes();
+                    } catch (e) { /* ignorar */ }
+                }
+            }
+        } else {
+            solicitudesList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${data.message || 'Error desconocido'}</p>`;
+        }
+    } catch (error) {
+
+        solicitudesList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error de conexión</p>';
+    }
+}
+
+// Función para gestionar solicitudes en modo LOCAL (localStorage)
+window.gestionarSolicitudGrupoLocal = function gestionarSolicitudGrupoLocal(solicitudId, accion) {
+    const mensaje = accion === 'aprobar' 
+        ? '¿Estás seguro de aprobar esta solicitud? El usuario podrá acceder al chat de ejidos.'
+        : '¿Estás seguro de rechazar esta solicitud?';
+    
+    if (!confirm(mensaje)) return;
+    
+    try {
+        // Obtener solicitudes
+        let solicitudes = JSON.parse(localStorage.getItem('solicitudesGrupos') || '[]');
+        
+        // Buscar y actualizar la solicitud
+        const index = solicitudes.findIndex(s => s.id === solicitudId);
+        
+        if (index === -1) {
+            alert('❌ Solicitud no encontrada');
+            return;
+        }
+        
+        // Actualizar estado
+        solicitudes[index].estado_solicitud = accion === 'aprobar' ? 'aprobada' : 'rechazada';
+        solicitudes[index].fecha_resolucion = new Date().toISOString();
+        
+        // Guardar
+        localStorage.setItem('solicitudesGrupos', JSON.stringify(solicitudes));
+        
+        // Mensaje de éxito
+        const mensajeExito = accion === 'aprobar' 
+            ? '✅ Solicitud aprobada (guardada localmente). Los grupos del chat se cargan desde el servidor: si en la página de Chat no aparece ningún grupo, ejecuta en el servidor el instalador de chat: /api/instalar_chat.php'
+            : '❌ Solicitud rechazada.';
+        
+        alert(mensajeExito);
+        
+        // Recargar lista
+        cargarSolicitudesGrupos();
+        
+    } catch (error) {
+
+        alert('❌ Error al gestionar la solicitud');
+    }
+}
+
+window.gestionarSolicitudGrupo = async function gestionarSolicitudGrupo(solicitudId, accion) {
+    const mensaje = accion === 'aprobar' 
+        ? '¿Estás seguro de aprobar esta solicitud? El usuario será agregado al grupo.'
+        : '¿Estás seguro de rechazar esta solicitud?';
+    
+    if (!confirm(mensaje)) return;
+    
+    const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    if (!token) {
+        alert('No estás autenticado');
+        return;
+    }
+    
+    // Si es aprobar, mostrar selector de grupos
+    let grupoId = 0;
+    if (accion === 'aprobar') {
+        try {
+            // Obtener todos los grupos disponibles
+            const gruposResponse = await fetch(`${getApiBaseUrl()}?action=get_grupos`);
+            const gruposData = await gruposResponse.json();
+            
+            if (!gruposData.success || !gruposData.grupos || gruposData.grupos.length === 0) {
+                alert('No hay grupos disponibles. Debes crear un grupo primero.');
+                return;
+            }
+            
+            // Crear modal para seleccionar grupo
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;';
+            
+            let gruposHtml = '<h3 style="margin-top: 0; margin-bottom: 1rem;">Selecciona un grupo:</h3>';
+            gruposHtml += '<select id="selectGrupoSolicitud" style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem;">';
+            gruposHtml += '<option value="0">-- Selecciona un grupo --</option>';
+            
+            gruposData.grupos.forEach(grupo => {
+                const ubicacion = [];
+                if (grupo.estado) ubicacion.push(grupo.estado);
+                if (grupo.municipio) ubicacion.push(grupo.municipio);
+                if (grupo.ciudad) ubicacion.push(grupo.ciudad);
+                const ubicacionStr = ubicacion.length > 0 ? ` (${ubicacion.join(', ')})` : '';
+                gruposHtml += `<option value="${grupo.id}">${escapeHtml(grupo.nombre)}${ubicacionStr}</option>`;
+            });
+            
+            gruposHtml += '</select>';
+            gruposHtml += '<div style="display: flex; gap: 1rem; justify-content: flex-end;">';
+            gruposHtml += '<button id="btnCancelarGrupo" style="padding: 0.75rem 1.5rem; background: #ccc; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>';
+            gruposHtml += '<button id="btnConfirmarGrupo" style="padding: 0.75rem 1.5rem; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Confirmar</button>';
+            gruposHtml += '</div>';
+            
+            modalContent.innerHTML = gruposHtml;
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Esperar selección
+            return new Promise((resolve) => {
+                document.getElementById('btnCancelarGrupo').onclick = () => {
+                    document.body.removeChild(modal);
+                    resolve();
+                };
+                
+                document.getElementById('btnConfirmarGrupo').onclick = async () => {
+                    const selectGrupo = document.getElementById('selectGrupoSolicitud');
+                    grupoId = parseInt(selectGrupo.value) || 0;
+                    
+                    if (grupoId === 0) {
+                        alert('Por favor selecciona un grupo');
+                        return;
+                    }
+                    
+                    document.body.removeChild(modal);
+                    
+                    // Continuar con la aprobación
+                    try {
+                        const adminIdValue = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : null;
+
+                        const response = await fetch(`${getApiBaseUrl()}?action=gestionar_solicitud_acceso`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                solicitud_id: solicitudId,
+                                accion: accion,
+                                admin_id: adminIdValue,
+                                grupo_id: grupoId
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert(data.message);
+                            cargarSolicitudesGrupos();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    } catch (error) {
+
+                        alert('Error de conexión');
+                    }
+                    
+                    resolve();
+                };
+            });
+        } catch (error) {
+
+            alert('Error al cargar grupos. Por favor, intenta nuevamente.');
+            return;
+        }
+    } else {
+        // Si es rechazar, proceder directamente
+        try {
+            const adminIdValue = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : null;
+
+            const response = await fetch(`${getApiBaseUrl()}?action=gestionar_solicitud_acceso`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    solicitud_id: solicitudId,
+                    accion: accion,
+                    admin_id: adminIdValue,
+                    grupo_id: 0
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(data.message);
+                cargarSolicitudesGrupos();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+
+            alert('Error de conexión');
+        }
+    }
+}
+
+// Función para reasignar una solicitud a otro grupo
+window.reasignarSolicitudGrupo = async function reasignarSolicitudGrupo(solicitudId) {
+    if (!confirm('¿Deseas reasignar esta solicitud a otro grupo?')) return;
+    
+    const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
+    if (!token) {
+        alert('No estás autenticado');
+        return;
+    }
+    
+    try {
+        // Obtener todos los grupos disponibles
+        const gruposResponse = await fetch(`${getApiBaseUrl()}?action=get_grupos`);
+        const gruposData = await gruposResponse.json();
+        
+        if (!gruposData.success || !gruposData.grupos || gruposData.grupos.length === 0) {
+            alert('No hay grupos disponibles.');
+            return;
+        }
+        
+        // Crear modal para seleccionar grupo
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = 'background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;';
+        
+        let gruposHtml = '<h3 style="margin-top: 0; margin-bottom: 1rem;">Selecciona el nuevo grupo:</h3>';
+        gruposHtml += '<select id="selectGrupoReasignar" style="width: 100%; padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem;">';
+        gruposHtml += '<option value="0">-- Selecciona un grupo --</option>';
+        
+        gruposData.grupos.forEach(grupo => {
+            const ubicacion = [];
+            if (grupo.estado) ubicacion.push(grupo.estado);
+            if (grupo.municipio) ubicacion.push(grupo.municipio);
+            if (grupo.ciudad) ubicacion.push(grupo.ciudad);
+            const ubicacionStr = ubicacion.length > 0 ? ` (${ubicacion.join(', ')})` : '';
+            gruposHtml += `<option value="${grupo.id}">${escapeHtml(grupo.nombre)}${ubicacionStr}</option>`;
+        });
+        
+        gruposHtml += '</select>';
+        gruposHtml += '<div style="display: flex; gap: 1rem; justify-content: flex-end;">';
+        gruposHtml += '<button id="btnCancelarReasignar" style="padding: 0.75rem 1.5rem; background: #ccc; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>';
+        gruposHtml += '<button id="btnConfirmarReasignar" style="padding: 0.75rem 1.5rem; background: #2196f3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Reasignar</button>';
+        gruposHtml += '</div>';
+        
+        modalContent.innerHTML = gruposHtml;
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Esperar selección
+        return new Promise((resolve) => {
+            document.getElementById('btnCancelarReasignar').onclick = () => {
+                document.body.removeChild(modal);
+                resolve();
+            };
+            
+            document.getElementById('btnConfirmarReasignar').onclick = async () => {
+                const selectGrupo = document.getElementById('selectGrupoReasignar');
+                const grupoId = parseInt(selectGrupo.value) || 0;
+                
+                if (grupoId === 0) {
+                    alert('Por favor selecciona un grupo');
+                    return;
+                }
+                
+                document.body.removeChild(modal);
+                
+                // Enviar reasignación
+                try {
+                    const adminIdValue = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : null;
+
+                    const response = await fetch(`${getApiBaseUrl()}?action=gestionar_solicitud_acceso`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            solicitud_id: solicitudId,
+                            accion: 'reasignar',
+                            admin_id: adminIdValue,
+                            grupo_id: grupoId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('✅ Solicitud reasignada exitosamente');
+                        cargarSolicitudesGrupos();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+
+                    alert('Error de conexión');
+                }
+                
+                resolve();
+            };
+        });
+    } catch (error) {
+
+        alert('Error al cargar grupos. Por favor, intenta nuevamente.');
+    }
+}
+
+// ==================== GESTIÓN DE GRUPOS ====================
+
+// Función para cambiar entre sub-pestañas de Grupos/Solicitudes
+window.mostrarSubTabGrupos = function mostrarSubTabGrupos(tab) {
+    const tabSolicitudes = document.getElementById('tabSolicitudes');
+    const tabGrupos = document.getElementById('tabGrupos');
+    const contenidoSolicitudes = document.getElementById('contenidoSolicitudes');
+    const contenidoGrupos = document.getElementById('contenidoGrupos');
+    
+    if (tab === 'solicitudes') {
+        if (tabSolicitudes) {
+            tabSolicitudes.style.background = '#4D8143';
+            tabSolicitudes.style.color = 'white';
+        }
+        if (tabGrupos) {
+            tabGrupos.style.background = '#e0e0e0';
+            tabGrupos.style.color = '#666';
+        }
+        if (contenidoSolicitudes) contenidoSolicitudes.style.display = 'block';
+        if (contenidoGrupos) contenidoGrupos.style.display = 'none';
+        
+        // Cargar solicitudes si no están cargadas
+        if (typeof window.cargarSolicitudesGrupos === 'function') {
+            setTimeout(() => window.cargarSolicitudesGrupos(), 100);
+        }
+    } else if (tab === 'grupos') {
+        if (tabSolicitudes) {
+            tabSolicitudes.style.background = '#e0e0e0';
+            tabSolicitudes.style.color = '#666';
+        }
+        if (tabGrupos) {
+            tabGrupos.style.background = '#4D8143';
+            tabGrupos.style.color = 'white';
+        }
+        if (contenidoSolicitudes) contenidoSolicitudes.style.display = 'none';
+        if (contenidoGrupos) contenidoGrupos.style.display = 'block';
+        
+        // Cargar grupos y configurar búsqueda
+        if (typeof window.cargarGruposAdmin === 'function') {
+            setTimeout(() => {
+                window.cargarGruposAdmin();
+                // Agregar listener para búsqueda
+                const searchInput = document.getElementById('searchGruposAdmin');
+                if (searchInput) {
+                    // Remover listener anterior si existe
+                    searchInput.removeEventListener('input', searchInput._searchHandler);
+                    // Crear nuevo handler
+                    searchInput._searchHandler = function() {
+                        if (typeof window.cargarGruposAdmin === 'function') {
+                            window.cargarGruposAdmin();
+                        }
+                    };
+                    searchInput.addEventListener('input', searchInput._searchHandler);
+                }
+            }, 100);
+        }
+    }
+}
+
+// Cargar todos los grupos para el administrador
+window.cargarGruposAdmin = async function cargarGruposAdmin() {
+    const gruposList = document.getElementById('gruposAdminList');
+    if (!gruposList) {
+
+        return;
+    }
+    
+    gruposList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Cargando grupos...</p>';
+    
+    try {
+        const response = await fetch(`${getApiBaseUrl()}?action=get_grupos`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const grupos = data.grupos || [];
+            const searchTerm = document.getElementById('searchGruposAdmin')?.value.toLowerCase() || '';
+            const gruposFiltrados = searchTerm 
+                ? grupos.filter(g => g.nombre.toLowerCase().includes(searchTerm))
+                : grupos;
+            
+            if (gruposFiltrados.length === 0) {
+                gruposList.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No hay grupos disponibles.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 1.5rem;">';
+            
+            gruposFiltrados.forEach(grupo => {
+                const ubicacion = [];
+                if (grupo.estado) ubicacion.push(grupo.estado);
+                if (grupo.municipio) ubicacion.push(grupo.municipio);
+                if (grupo.ciudad) ubicacion.push(grupo.ciudad);
+                const ubicacionStr = ubicacion.length > 0 ? ubicacion.join(', ') : 'Sin ubicación';
+                
+                html += `
+                    <div style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid ${grupo.activo ? '#4caf50' : '#ccc'};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 0.5rem 0; color: #333;">${escapeHtml(grupo.nombre)}</h3>
+                                ${grupo.descripcion ? `<p style="margin: 0 0 0.5rem 0; color: #666; font-size: 0.9rem;">${escapeHtml(grupo.descripcion)}</p>` : ''}
+                                <p style="margin: 0; color: #666; font-size: 0.85rem;">
+                                    <strong>📍 Ubicación:</strong> ${escapeHtml(ubicacionStr)}<br>
+                                    <strong>👤 Líder:</strong> ${escapeHtml(grupo.lider_nombre || 'N/A')} (${escapeHtml(grupo.lider_email || 'N/A')})<br>
+                                    <strong>👥 Miembros:</strong> ${grupo.total_miembros || 0}<br>
+                                    <strong>🔑 Código:</strong> ${escapeHtml(grupo.codigo_acceso || 'N/A')}
+                                </p>
+                            </div>
+                            <span style="padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; background: ${grupo.activo ? '#e8f5e9' : '#f5f5f5'}; color: ${grupo.activo ? '#2e7d32' : '#666'};">
+                                ${grupo.activo ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; font-size: 0.85rem; color: #999;">
+                            <span>📅 Creado: ${formatDate(grupo.fecha_creacion)}</span>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button onclick="verMiembrosGrupoAdmin(${grupo.id}, '${escapeHtml(grupo.nombre)}')" style="padding: 0.75rem 1.5rem; background: #2196f3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                                👥 Ver Miembros
+                            </button>
+                            <button onclick="editarGrupoAdmin(${grupo.id})" style="padding: 0.75rem 1.5rem; background: #ff9800; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                                ✏️ Editar
+                            </button>
+                            <button onclick="eliminarGrupoAdmin(${grupo.id}, '${escapeHtml(grupo.nombre)}')" style="padding: 0.75rem 1.5rem; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                                🗑️ Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            gruposList.innerHTML = html;
+        } else {
+            gruposList.innerHTML = `<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error: ${data.message || 'Error desconocido'}</p>`;
+        }
+    } catch (error) {
+
+        gruposList.innerHTML = '<p style="color: #d32f2f; text-align: center; padding: 2rem;">Error de conexión</p>';
+    }
+}
+
+// Abrir modal para crear grupo
+window.abrirModalCrearGrupoAdmin = async function abrirModalCrearGrupoAdmin() {
+    const modal = document.getElementById('crearGrupoModal');
+    if (!modal) {
+        alert('Modal no encontrado');
+        return;
+    }
+    
+    // Cargar usuarios para el selector de líder
+    try {
+        const response = await fetch(`${getApiBaseUrl()}?action=get_all_usuarios`);
+        const data = await response.json();
+        
+        const liderSelect = document.getElementById('liderGrupoAdmin');
+        if (liderSelect && data.success && data.usuarios) {
+            liderSelect.innerHTML = '<option value="">-- Selecciona un usuario --</option>';
+            data.usuarios.forEach(usuario => {
+                const option = document.createElement('option');
+                option.value = usuario.id;
+                option.textContent = `${escapeHtml(usuario.nombre)} (${escapeHtml(usuario.email)})`;
+                liderSelect.appendChild(option);
+            });
+        }
+        
+        // Cargar estados
+        const estadosMexico = [
+            'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+            'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
+            'Durango', 'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo',
+            'Jalisco', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León',
+            'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí',
+            'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
+            'Veracruz', 'Yucatán', 'Zacatecas'
+        ];
+        
+        const estadoSelect = document.getElementById('estadoGrupoAdmin');
+        if (estadoSelect) {
+            estadoSelect.innerHTML = '<option value="">-- Selecciona un estado (opcional) --</option>';
+            estadosMexico.forEach(estado => {
+                const option = document.createElement('option');
+                option.value = estado;
+                option.textContent = estado;
+                estadoSelect.appendChild(option);
+            });
+            
+            estadoSelect.addEventListener('change', function() {
+                const municipioSelect = document.getElementById('municipioGrupoAdmin');
+                const ciudadSelect = document.getElementById('ciudadGrupoAdmin');
+                
+                if (this.value) {
+                    // Cargar municipios según el estado (simplificado)
+                    municipioSelect.disabled = false;
+                    municipioSelect.innerHTML = '<option value="">-- Selecciona un municipio --</option>';
+                    // Aquí podrías cargar municipios reales según el estado
+                    municipioSelect.innerHTML += '<option value="Municipio Principal">Municipio Principal</option>';
+                    // Resetear ciudad cuando cambia el estado
+                    ciudadSelect.disabled = true;
+                    ciudadSelect.innerHTML = '<option value="">-- Selecciona primero un municipio --</option>';
+                } else {
+                    municipioSelect.disabled = true;
+                    ciudadSelect.disabled = true;
+                    municipioSelect.innerHTML = '<option value="">-- Selecciona primero un estado --</option>';
+                    ciudadSelect.innerHTML = '<option value="">-- Selecciona primero un municipio --</option>';
+                }
+            });
+            
+            // Agregar listener para el selector de municipio
+            const municipioSelect = document.getElementById('municipioGrupoAdmin');
+            if (municipioSelect) {
+                // Remover listener anterior si existe
+                municipioSelect.removeEventListener('change', municipioSelect._changeHandler);
+                // Crear nuevo handler
+                municipioSelect._changeHandler = function() {
+                    const ciudadSelect = document.getElementById('ciudadGrupoAdmin');
+                    if (ciudadSelect) {
+                        if (this.value) {
+                            ciudadSelect.disabled = false;
+                            ciudadSelect.innerHTML = '<option value="">-- Selecciona una ciudad (opcional) --</option>';
+                            // Aquí podrías cargar ciudades reales según el municipio
+                            ciudadSelect.innerHTML += '<option value="Ciudad Principal">Ciudad Principal</option>';
+                        } else {
+                            ciudadSelect.disabled = true;
+                            ciudadSelect.innerHTML = '<option value="">-- Selecciona primero un municipio --</option>';
+                        }
+                    }
+                };
+                municipioSelect.addEventListener('change', municipioSelect._changeHandler);
+            }
+        }
+    } catch (error) {
+
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// Crear grupo desde admin
+window.crearGrupoAdmin = async function crearGrupoAdmin(event) {
+    event.preventDefault();
+    
+    const nombre = document.getElementById('nombreGrupoAdmin').value.trim();
+    const descripcion = document.getElementById('descripcionGrupoAdmin').value.trim();
+    const liderId = parseInt(document.getElementById('liderGrupoAdmin').value) || 0;
+    const estado = document.getElementById('estadoGrupoAdmin').value.trim();
+    const municipio = document.getElementById('municipioGrupoAdmin').value.trim();
+    const ciudad = document.getElementById('ciudadGrupoAdmin').value.trim();
+    
+    if (!nombre) {
+        alert('El nombre del grupo es requerido');
+        return;
+    }
+    
+    if (liderId <= 0) {
+        alert('Debes seleccionar un líder para el grupo');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${getApiBaseUrl()}?action=create_grupo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre: nombre,
+                descripcion: descripcion,
+                lider_id: liderId,
+                estado: estado || null,
+                municipio: municipio || null,
+                ciudad: ciudad || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Cerrar modal primero
+            closeModal('crearGrupoModal');
+            document.getElementById('crearGrupoForm').reset();
+
+            // Mostrar mensaje de éxito
+            alert(`✅ Grupo creado exitosamente!\n\nCódigo de acceso: ${data.grupo.codigo_acceso}`);
+
+            // Recargar lista de grupos
+            cargarGruposAdmin();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+
+        alert('Error de conexión');
+    }
+}
+
+// Ver miembros de un grupo
+window.verMiembrosGrupoAdmin = async function verMiembrosGrupoAdmin(grupoId, grupoNombre) {
+    try {
+        const response = await fetch(`${getApiBaseUrl()}?action=get_miembros_grupo&grupo_id=${grupoId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const miembros = data.miembros || [];
+            let html = `<h3 style="margin-bottom: 1rem; color: #333;">Miembros de: ${escapeHtml(grupoNombre)}</h3>`;
+            
+            if (miembros.length === 0) {
+                html += '<p style="color: #999; text-align: center; padding: 2rem;">No hay miembros en este grupo.</p>';
+            } else {
+                html += '<div style="display: grid; gap: 0.75rem; max-height: 400px; overflow-y: auto;">';
+                miembros.forEach(miembro => {
+                    html += `
+                        <div style="padding: 1rem; background: #f5f5f5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${miembro.rol === 'lider' ? '#4caf50' : miembro.rol === 'coordinador' ? '#2196f3' : '#999'};">
+                            <div>
+                                <strong style="color: #333;">${escapeHtml(miembro.usuario_nombre || 'N/A')}</strong><br>
+                                <span style="font-size: 0.85rem; color: #666;">${escapeHtml(miembro.usuario_email || 'N/A')}</span>
+                            </div>
+                            <span style="padding: 0.5rem 1rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; background: ${miembro.rol === 'lider' ? '#4caf50' : miembro.rol === 'coordinador' ? '#2196f3' : '#999'}; color: white;">
+                                ${miembro.rol === 'lider' ? 'Líder' : miembro.rol === 'coordinador' ? 'Coordinador' : 'Miembro'}
+                            </span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Crear modal temporal para mostrar miembros
+            const modal = document.createElement('div');
+            modal.className = 'modal-miembros-overlay';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: white; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+            modalContent.innerHTML = html + '<div style="margin-top: 1.5rem; text-align: right;"><button type="button" class="btn-cerrar-modal-miembros" style="padding: 0.75rem 1.5rem; background: #4D8143; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cerrar</button></div>';
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            modal.querySelector('.btn-cerrar-modal-miembros').addEventListener('click', function() {
+                modal.remove();
+            });
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+
+        alert('Error de conexión');
+    }
+}
+
+// Editar grupo
+window.editarGrupoAdmin = function editarGrupoAdmin(grupoId) {
+    alert('Función de edición en desarrollo. Por ahora puedes eliminar y crear un nuevo grupo.');
+}
+
+// Eliminar todos los ejidos predeterminados ("Ejidos México")
+window.eliminarGruposPredeterminadosAdmin = async function eliminarGruposPredeterminadosAdmin() {
+    if (!confirm('¿Eliminar TODOS los grupos predeterminados "Ejidos México"? Esta acción no se puede deshacer.')) {
+        return;
+    }
+    try {
+        const adminId = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : 0;
+        const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : null;
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_grupos_predeterminados`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: adminId || 0, token: token })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message || 'Ejidos predeterminados eliminados.');
+            if (typeof window.cargarGruposAdmin === 'function') {
+                window.cargarGruposAdmin();
+            }
+        } else {
+            alert('Error: ' + (data.message || 'No se pudieron eliminar'));
+        }
+    } catch (error) {
+        alert('Error de conexión');
+    }
+};
+
+// Eliminar TODOS los grupos del apartado Grupos
+window.eliminarTodosLosGruposAdmin = async function eliminarTodosLosGruposAdmin() {
+    if (!confirm('¿Eliminar TODOS los grupos de la base de datos? Se borrarán todos los grupos de ejidos. Esta acción no se puede deshacer.')) {
+        return;
+    }
+    try {
+        const adminId = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : 0;
+        const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : null;
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_all_grupos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: adminId || 0, token: token })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message || 'Todos los grupos han sido eliminados.');
+            if (typeof window.cargarGruposAdmin === 'function') {
+                window.cargarGruposAdmin();
+            }
+        } else {
+            alert('Error: ' + (data.message || 'No se pudieron eliminar'));
+        }
+    } catch (error) {
+        alert('Error de conexión');
+    }
+};
+
+// Eliminar grupo
+window.eliminarGrupoAdmin = async function eliminarGrupoAdmin(grupoId, grupoNombre) {
+    if (!confirm(`¿Estás seguro de eliminar el grupo "${grupoNombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    try {
+        const adminId = window.adminAuthSystem ? window.adminAuthSystem.getCurrentAdmin()?.id : 0;
+        const response = await fetch(`${getApiBaseUrl()}?action=delete_grupo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                grupo_id: grupoId,
+                admin_id: adminId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Grupo eliminado exitosamente');
+            cargarGruposAdmin();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+
+        alert('Error de conexión');
+    }
+}
+
+// ==================== ASISTENTE IA PARA MODERACIÓN - DESACTIVADO ====================
+/*
+async function loadAISuggestionAdvertencia(usuarioId) {
+
     const suggestionDiv = document.getElementById('aiSuggestionAdvertencia');
     const suggestionText = document.getElementById('aiSuggestionAdvertenciaText');
     
     if (!suggestionDiv || !suggestionText) {
-        console.error('❌ [IA] Elementos del DOM no encontrados');
+
         return;
     }
     
@@ -2242,17 +3828,17 @@ async function loadAISuggestionAdvertencia(usuarioId) {
     
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
-        console.error('❌ [IA] No hay token de autenticación');
+
         suggestionText.innerHTML = '<span style="color: #d32f2f;">⚠️ Error: No estás autenticado. Por favor, inicia sesión nuevamente.</span>';
         return;
     }
     
     try {
-        console.log('📡 [IA] Obteniendo información del usuario...');
+
         const [infoResponse, advertenciasResponse, bansResponse] = await Promise.all([
-            fetch(`../api/api.php?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`),
-            fetch(`../api/api.php?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`),
-            fetch(`../api/api.php?action=listar_bans&token=${token}&usuario_id=${usuarioId}`)
+            fetch(`${getApiBaseUrl()}?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`),
+            fetch(`${getApiBaseUrl()}?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`),
+            fetch(`${getApiBaseUrl()}?action=listar_bans&token=${token}&usuario_id=${usuarioId}`)
         ]);
         
         if (!infoResponse.ok || !advertenciasResponse.ok || !bansResponse.ok) {
@@ -2262,15 +3848,9 @@ async function loadAISuggestionAdvertencia(usuarioId) {
         const infoData = await infoResponse.json();
         const advertenciasData = await advertenciasResponse.json();
         const bansData = await bansResponse.json();
-        
-        console.log('📦 [IA] Datos recibidos:', {
-            usuario: infoData.success ? 'OK' : 'ERROR',
-            advertencias: advertenciasData.success ? 'OK' : 'ERROR',
-            bans: bansData.success ? 'OK' : 'ERROR'
-        });
-        
+
         if (!infoData.success) {
-            console.error('❌ [IA] Error al obtener información del usuario:', infoData.message);
+
             suggestionText.innerHTML = `<span style="color: #d32f2f;">⚠️ Error: ${infoData.message || 'No se pudo obtener la información del usuario'}</span>`;
             return;
         }
@@ -2278,40 +3858,32 @@ async function loadAISuggestionAdvertencia(usuarioId) {
         const usuario = infoData.usuario;
         const advertencias = advertenciasData.success ? advertenciasData.advertencias.filter(a => a.activa) : [];
         const bans = bansData.success ? bansData.bans.filter(b => b.activo) : [];
-        
-        console.log('🔍 [IA] Analizando usuario:', {
-            nombre: usuario.nombre,
-            email: usuario.email,
-            advertenciasActivas: advertencias.length,
-            bansActivos: bans.length
-        });
-        
+
         const suggestion = analyzeUserForAdvertencia(usuario, advertencias, bans);
         
         if (suggestion) {
-            console.log('✅ [IA] Sugerencia generada correctamente');
+
             suggestionText.innerHTML = suggestion;
             suggestionDiv.style.display = 'block';
         } else {
-            console.warn('⚠️ [IA] No se generó sugerencia');
+
             suggestionText.innerHTML = '<span style="color: #666;">ℹ️ No hay sugerencias disponibles para este usuario.</span>';
             suggestionDiv.style.display = 'block';
         }
     } catch (error) {
-        console.error('❌ [IA] Error al cargar sugerencia IA:', error);
+
         suggestionText.innerHTML = `<span style="color: #d32f2f;">⚠️ Error al analizar usuario: ${error.message || 'Error desconocido'}. Verifica la consola para más detalles.</span>`;
         suggestionDiv.style.display = 'block';
     }
 }
 
 async function loadAISuggestionBan(usuarioId) {
-    console.log('🤖 [IA] Iniciando carga de sugerencia de ban para usuario:', usuarioId);
-    
+
     const suggestionDiv = document.getElementById('aiSuggestionBan');
     const suggestionText = document.getElementById('aiSuggestionBanText');
     
     if (!suggestionDiv || !suggestionText) {
-        console.error('❌ [IA] Elementos del DOM no encontrados');
+
         return;
     }
     
@@ -2321,17 +3893,17 @@ async function loadAISuggestionBan(usuarioId) {
     
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
-        console.error('❌ [IA] No hay token de autenticación');
+
         suggestionText.innerHTML = '<span style="color: #d32f2f;">⚠️ Error: No estás autenticado. Por favor, inicia sesión nuevamente.</span>';
         return;
     }
     
     try {
-        console.log('📡 [IA] Obteniendo información del usuario...');
+
         const [infoResponse, advertenciasResponse, bansResponse] = await Promise.all([
-            fetch(`../api/api.php?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`),
-            fetch(`../api/api.php?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`),
-            fetch(`../api/api.php?action=listar_bans&token=${token}&usuario_id=${usuarioId}`)
+            fetch(`${getApiBaseUrl()}?action=get_usuario_info&token=${token}&usuario_id=${usuarioId}`),
+            fetch(`${getApiBaseUrl()}?action=listar_advertencias&token=${token}&usuario_id=${usuarioId}`),
+            fetch(`${getApiBaseUrl()}?action=listar_bans&token=${token}&usuario_id=${usuarioId}`)
         ]);
         
         if (!infoResponse.ok || !advertenciasResponse.ok || !bansResponse.ok) {
@@ -2341,15 +3913,9 @@ async function loadAISuggestionBan(usuarioId) {
         const infoData = await infoResponse.json();
         const advertenciasData = await advertenciasResponse.json();
         const bansData = await bansResponse.json();
-        
-        console.log('📦 [IA] Datos recibidos:', {
-            usuario: infoData.success ? 'OK' : 'ERROR',
-            advertencias: advertenciasData.success ? 'OK' : 'ERROR',
-            bans: bansData.success ? 'OK' : 'ERROR'
-        });
-        
+
         if (!infoData.success) {
-            console.error('❌ [IA] Error al obtener información del usuario:', infoData.message);
+
             suggestionText.innerHTML = `<span style="color: #d32f2f;">⚠️ Error: ${infoData.message || 'No se pudo obtener la información del usuario'}</span>`;
             return;
         }
@@ -2357,27 +3923,20 @@ async function loadAISuggestionBan(usuarioId) {
         const usuario = infoData.usuario;
         const advertencias = advertenciasData.success ? advertenciasData.advertencias.filter(a => a.activa) : [];
         const bans = bansData.success ? bansData.bans.filter(b => b.activo) : [];
-        
-        console.log('🔍 [IA] Analizando usuario:', {
-            nombre: usuario.nombre,
-            email: usuario.email,
-            advertenciasActivas: advertencias.length,
-            bansActivos: bans.length
-        });
-        
+
         const suggestion = analyzeUserForBan(usuario, advertencias, bans);
         
         if (suggestion) {
-            console.log('✅ [IA] Sugerencia generada correctamente');
+
             suggestionText.innerHTML = suggestion;
             suggestionDiv.style.display = 'block';
         } else {
-            console.warn('⚠️ [IA] No se generó sugerencia');
+
             suggestionText.innerHTML = '<span style="color: #666;">ℹ️ No hay sugerencias disponibles para este usuario.</span>';
             suggestionDiv.style.display = 'block';
         }
     } catch (error) {
-        console.error('❌ [IA] Error al cargar sugerencia IA:', error);
+
         suggestionText.innerHTML = `<span style="color: #d32f2f;">⚠️ Error al analizar usuario: ${error.message || 'Error desconocido'}. Verifica la consola para más detalles.</span>`;
         suggestionDiv.style.display = 'block';
     }
@@ -2403,7 +3962,7 @@ function analyzeUserForAdvertencia(usuario, advertencias, bans) {
                 diasDesdeRegistro = Math.floor((new Date() - fechaRegistro) / (1000 * 60 * 60 * 24));
             }
         } catch (e) {
-            console.warn('Error al calcular días desde registro:', e);
+
         }
         
         let suggestion = '';
@@ -2445,13 +4004,13 @@ function analyzeUserForAdvertencia(usuario, advertencias, bans) {
                     }
                 }
             } catch (e) {
-                console.warn('Error al calcular estadísticas:', e);
+
             }
         }
         
         return suggestion || '✅ <strong>Análisis completado:</strong> Usuario sin historial previo de sanciones.';
     } catch (error) {
-        console.error('Error en analyzeUserForAdvertencia:', error);
+
         return '⚠️ <strong>Error:</strong> No se pudo analizar el usuario. Por favor, intenta nuevamente.';
     }
 }
@@ -2476,7 +4035,7 @@ function analyzeUserForBan(usuario, advertencias, bans) {
                 diasDesdeRegistro = Math.floor((new Date() - fechaRegistro) / (1000 * 60 * 60 * 24));
             }
         } catch (e) {
-            console.warn('Error al calcular días desde registro:', e);
+
         }
         
         let suggestion = '';
@@ -2529,33 +4088,25 @@ function analyzeUserForBan(usuario, advertencias, bans) {
                     }
                 }
             } catch (e) {
-                console.warn('Error al actualizar formulario:', e);
+
             }
         }, 100);
         
         return suggestion || '✅ <strong>Recomendación: Ban Temporal de 7 días</strong><br>Usuario sin historial previo de sanciones.';
     } catch (error) {
-        console.error('Error en analyzeUserForBan:', error);
+
         return '⚠️ <strong>Error:</strong> No se pudo analizar el usuario. Por favor, intenta nuevamente.';
     }
 }
-
+*/
 
 // ==================== INTENTOS DE CONTENIDO OFENSIVO ====================
 // NOTA: La función loadIntentosOfensivos ya está definida al inicio del archivo
 // Crear referencia local para uso interno
 const loadIntentosOfensivos = window.loadIntentosOfensivos;
 
-function renderIntentosOfensivos(intentos) {
-    const tbody = document.getElementById('intentosOfensivosTableBody');
-    if (!tbody) return;
-    
-    if (intentos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #999;">No hay intentos registrados</td></tr>';
-        return;
-    }
-    
-    // Agrupar intentos por email (para registro_usuario) o por usuario_id (para otros tipos)
+// Función auxiliar para agrupar intentos
+function agruparIntentos(intentos) {
     const intentosAgrupados = {};
     
     intentos.forEach(intento => {
@@ -2577,6 +4128,21 @@ function renderIntentosOfensivos(intentos) {
         }
         intentosAgrupados[claveAgrupacion].push(intento);
     });
+    
+    return intentosAgrupados;
+}
+
+function renderIntentosOfensivos(intentos, totalGrupos = null) {
+    const tbody = document.getElementById('intentosOfensivosTableBody');
+    if (!tbody) return;
+    
+    if (intentos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #999;">No hay intentos registrados</td></tr>';
+        return;
+    }
+    
+    // Agrupar intentos por email (para registro_usuario) o por usuario_id (para otros tipos)
+    const intentosAgrupados = agruparIntentos(intentos);
     
     // Renderizar grupos
     let html = '';
@@ -2681,7 +4247,7 @@ function renderIntentosOfensivos(intentos) {
     tbody.innerHTML = html;
 }
 
-function actualizarPaginacionIntentos(total, offset, limit) {
+function actualizarPaginacionIntentos(totalGrupos, offset, limit) {
     const paginacionDiv = document.getElementById('paginacionIntentos');
     const infoPaginacion = document.getElementById('infoPaginacionIntentos');
     const btnAnterior = document.getElementById('btnAnteriorIntentos');
@@ -2689,16 +4255,17 @@ function actualizarPaginacionIntentos(total, offset, limit) {
     
     if (!paginacionDiv || !infoPaginacion) return;
     
-    if (total === 0) {
+    if (totalGrupos === 0) {
         paginacionDiv.style.display = 'none';
         return;
     }
     
     paginacionDiv.style.display = 'block';
     const paginaActual = Math.floor(offset / limit) + 1;
-    const totalPaginas = Math.ceil(total / limit);
+    const totalPaginas = Math.ceil(totalGrupos / limit);
     
-    infoPaginacion.textContent = `Página ${paginaActual} de ${totalPaginas} (${total} total)`;
+    // Mostrar información de grupos (usuarios/IPs únicos), no intentos individuales
+    infoPaginacion.textContent = `Página ${paginaActual} de ${totalPaginas} (${totalGrupos} usuario${totalGrupos !== 1 ? 's' : ''} único${totalGrupos !== 1 ? 's' : ''})`;
     
     if (btnAnterior) {
         btnAnterior.disabled = paginaActual === 1;
@@ -2730,9 +4297,11 @@ let iaHistorial = [];
 // Variable para el intervalo de análisis automático
 let intervaloIAAutonoma = null;
 
-// Inicializar sección de IA Autónoma
+// ========== FUNCIONES DE IA AUTÓNOMA DESACTIVADAS ==========
+// La detección de contenido ofensivo en el backend sigue activa
+/*
 function initIAAutonoma() {
-    console.log('🤖 [IA Autónoma] Inicializando modo autónomo de IA...');
+
     renderNotificacionesIA();
     renderHistorialIA();
     
@@ -2741,89 +4310,71 @@ function initIAAutonoma() {
     setTimeout(() => actualizarUltimaRevision(), 500);
     setTimeout(() => actualizarUltimaRevision(), 1000);
 }
+*/
 
-// Iniciar análisis automático continuo
+/*
 function iniciarIAAutonoma() {
-    console.log('🤖 [IA Autónoma] ========== INICIANDO SISTEMA AUTÓNOMO ==========');
-    console.log('🤖 [IA Autónoma] Iniciando análisis automático continuo...');
-    console.log('🔍 [IA Autónoma] Verificando disponibilidad de adminAuthSystem:', typeof window.adminAuthSystem);
-    
+
     // Verificar que tenemos token antes de iniciar
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
-    console.log('🔍 [IA Autónoma] Token obtenido:', token ? 'SÍ (longitud: ' + token.length + ')' : 'NO');
-    
+
     if (!token) {
-        console.error('❌ [IA Autónoma] NO HAY TOKEN - No se puede iniciar el análisis');
-        console.error('❌ [IA Autónoma] Esperando a que se autentique el administrador...');
-        console.error('❌ [IA Autónoma] adminAuthSystem disponible:', typeof window.adminAuthSystem !== 'undefined');
+
         if (window.adminAuthSystem) {
-            console.error('❌ [IA Autónoma] isAuthenticated():', window.adminAuthSystem.isAuthenticated());
         }
         // Intentar nuevamente después de 2 segundos (máximo 5 intentos)
         if (!window._iaRetryCount) window._iaRetryCount = 0;
         window._iaRetryCount++;
         if (window._iaRetryCount < 5) {
-            console.log(`🔄 [IA Autónoma] Reintento ${window._iaRetryCount}/5 en 2 segundos...`);
+
             setTimeout(() => {
                 iniciarIAAutonoma();
             }, 2000);
         } else {
-            console.error('❌ [IA Autónoma] Máximo de reintentos alcanzado. El análisis no se iniciará.');
+
         }
         return;
     }
     
     // Resetear contador de reintentos si tenemos token
     window._iaRetryCount = 0;
-    
-    console.log('✅ [IA Autónoma] Token encontrado, iniciando análisis...');
-    
+
     // Ejecutar análisis inmediatamente al cargar
-    console.log('🚀 [IA Autónoma] Ejecutando análisis inicial...');
-    console.log('⏰ [IA Autónoma] Hora de ejecución:', new Date().toISOString());
+
+    .toISOString());
     
     analizarUsuariosConIA(true).then(() => {
-        console.log('✅ [IA Autónoma] Análisis inicial completado exitosamente');
+
     }).catch(error => {
-        console.error('❌ [IA Autónoma] Error en análisis inicial:', error);
-        console.error('❌ [IA Autónoma] Mensaje de error:', error.message);
-        console.error('❌ [IA Autónoma] Stack trace:', error.stack);
+
         // NO actualizar última revisión si falla
     });
     
     // Configurar intervalo para ejecutar cada 5 minutos (300000 ms)
     // Limpiar intervalo anterior si existe
     if (intervaloIAAutonoma) {
-        console.log('🔄 [IA Autónoma] Limpiando intervalo anterior...');
+
         clearInterval(intervaloIAAutonoma);
     }
     
     intervaloIAAutonoma = setInterval(() => {
-        console.log('🤖 [IA Autónoma] ========== EJECUTANDO ANÁLISIS PERIÓDICO ==========');
-        console.log('⏰ [IA Autónoma] Hora de ejecución periódica:', new Date().toISOString());
+
+        .toISOString());
         analizarUsuariosConIA(true).then(() => {
-            console.log('✅ [IA Autónoma] Análisis periódico completado exitosamente');
+
         }).catch(error => {
-            console.error('❌ [IA Autónoma] Error en análisis periódico:', error);
-            console.error('❌ [IA Autónoma] Mensaje de error:', error.message);
-            console.error('❌ [IA Autónoma] Stack trace:', error.stack);
+
         });
     }, 5 * 60 * 1000); // 5 minutos
-    
-    console.log('✅ [IA Autónoma] Análisis automático configurado para ejecutarse cada 5 minutos');
-    console.log('✅ [IA Autónoma] El próximo análisis automático será en 5 minutos');
-    console.log('✅ [IA Autónoma] Sistema autónomo iniciado correctamente');
-    
+
     // Hacer la función disponible globalmente para debugging
     window.iniciarIAAutonoma = iniciarIAAutonoma;
     // analizarUsuariosConIA ya está disponible globalmente desde su definición
-    console.log('✅ [IA Autónoma] Funciones disponibles globalmente:', {
-        iniciarIAAutonoma: typeof window.iniciarIAAutonoma,
-        analizarUsuariosConIA: typeof window.analizarUsuariosConIA
-    });
-}
 
-// Actualizar timestamp de última revisión
+}
+*/
+
+/*
 function actualizarUltimaRevision() {
     try {
         const ahora = new Date();
@@ -2837,11 +4388,10 @@ function actualizarUltimaRevision() {
         if (elemento) {
             elemento.textContent = textoFecha;
             elemento.innerHTML = textoFecha; // También usar innerHTML por si acaso
-            console.log('✅ [IA Autónoma] Última revisión actualizada:', textoFecha);
+
             return true;
         } else {
-            console.warn('⚠️ [IA Autónoma] Elemento ultimaRevisionIA no encontrado, intentando múltiples veces...');
-            
+
             // Intentar varias veces con diferentes delays
             const intentos = [100, 300, 500, 1000, 2000];
             intentos.forEach((delay, index) => {
@@ -2850,57 +4400,49 @@ function actualizarUltimaRevision() {
                     if (elementoRetry) {
                         elementoRetry.textContent = textoFecha;
                         elementoRetry.innerHTML = textoFecha;
-                        console.log(`✅ [IA Autónoma] Última revisión actualizada (intento ${index + 1}):`, textoFecha);
                     } else if (index === intentos.length - 1) {
-                        console.error('❌ [IA Autónoma] No se pudo encontrar el elemento después de múltiples intentos');
+
                     }
                 }, delay);
             });
             return false;
         }
     } catch (error) {
-        console.error('❌ [IA Autónoma] Error al actualizar última revisión:', error);
+
         return false;
     }
 }
 
-// Hacer la función disponible globalmente para debugging
-window.actualizarUltimaRevision = actualizarUltimaRevision;
+}
+*/
 
-// Analizar todos los usuarios y proponer acciones automáticas
-// Hacer la función disponible globalmente INMEDIATAMENTE
-console.log('🔧 [Admin.js] ========== DEFINIENDO FUNCIÓN analizarUsuariosConIA ==========');
-console.log('🔧 [Admin.js] Definiendo window.analizarUsuariosConIA...');
+// window.actualizarUltimaRevision = actualizarUltimaRevision;
 
-// DEFINIR LA FUNCIÓN DIRECTAMENTE SIN TRY-CATCH PARA EVITAR PROBLEMAS
+/*
+
 window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencioso = false) {
     const inicioAnalisis = Date.now();
-    console.log('🤖 [IA Autónoma] ========== INICIANDO ANÁLISIS ==========');
-    console.log('🤖 [IA Autónoma] Iniciando análisis de usuarios...');
-    console.log('⏰ [IA Autónoma] Hora de inicio:', new Date().toISOString());
+
+    .toISOString());
     
     try {
         // Verificar token PRIMERO
         const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
         if (!token) {
-            console.error('❌ [IA Autónoma] No hay token de autenticación');
-            console.error('❌ [IA Autónoma] NO se actualizará la última revisión porque no hay token');
-            console.error('❌ [IA Autónoma] El análisis NO se ejecutará sin token');
+
             if (!modoSilencioso) {
                 alert('Error: No estás autenticado');
             }
             throw new Error('No hay token de autenticación');
         }
-        
-        console.log('✅ [IA Autónoma] Token verificado, continuando con el análisis...');
-        
+
         // Cargar usuarios si no están cargados
         if (!allUsers || allUsers.length === 0) {
-            console.log('📊 [IA Autónoma] Cargando usuarios...');
+
             await loadUsuarios();
-            console.log(`📊 [IA Autónoma] ${allUsers.length} usuarios cargados`);
+
         } else {
-            console.log(`📊 [IA Autónoma] Usando ${allUsers.length} usuarios ya cargados`);
+
         }
         
         // Filtrar solo usuarios normales (no admins)
@@ -2908,9 +4450,7 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
             u.rol !== 'admin' && 
             u.activo !== false
         );
-        
-        console.log(`📊 [IA Autónoma] Analizando ${usuariosAAnalizar.length} usuarios...`);
-        
+
         const accionesPropuestas = [];
         
         // Analizar cada usuario
@@ -2920,9 +4460,9 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
                 
                 // Obtener datos reales del usuario
                 const [infoResponse, advertenciasResponse, bansResponse] = await Promise.all([
-                    fetch(`../api/api.php?action=get_usuario_info&token=${token}&usuario_id=${usuario.id}`),
-                    fetch(`../api/api.php?action=listar_advertencias&token=${token}&usuario_id=${usuario.id}`),
-                    fetch(`../api/api.php?action=listar_bans&token=${token}&usuario_id=${usuario.id}&solo_activos=true`)
+                    fetch(`${getApiBaseUrl()}?action=get_usuario_info&token=${token}&usuario_id=${usuario.id}`),
+                    fetch(`${getApiBaseUrl()}?action=listar_advertencias&token=${token}&usuario_id=${usuario.id}`),
+                    fetch(`${getApiBaseUrl()}?action=listar_bans&token=${token}&usuario_id=${usuario.id}&solo_activos=true`)
                 ]);
                 
                 const infoData = await infoResponse.json();
@@ -2944,50 +4484,86 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
                     return false;
                 }) : [];
                 
-                // Debug: Log para usuarios con múltiples advertencias
-                if (advertencias.length >= 3) {
-                    console.log(`🔍 [IA Autónoma] Usuario ${usuarioData.id} (${usuarioData.nombre}): ${advertencias.length} advertencias activas, ${bans.length} bans activos`);
+                // Log detallado para TODOS los usuarios con advertencias
+                if (advertencias.length > 0) {
                 }
                 
                 // Analizar y decidir acción
                 const accion = decidirAccionAutomatica(usuarioData, advertencias, bans);
                 
                 if (accion) {
-                    console.log(`✅ [IA Autónoma] Acción propuesta para usuario ${usuarioData.id}: ${accion.tipo} - ${accion.motivo}`);
                     accionesPropuestas.push({
                         ...accion,
                         usuario: usuarioData,
                         timestamp: new Date().toISOString()
                     });
-                } else if (advertencias.length >= 3) {
-                    console.log(`⚠️ [IA Autónoma] Usuario ${usuarioData.id} tiene ${advertencias.length} advertencias pero no se propuso acción. Bans activos: ${bans.length}`);
+                } else {
+                    // Log detallado cuando NO se propone acción
+                    if (advertencias.length >= 2) {
+                    }
                 }
                 
                 // Pequeña pausa para no sobrecargar
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
             } catch (error) {
-                console.error(`Error al analizar usuario ${usuario.id}:`, error);
+
             }
         }
         
         // Analizar también intentos ofensivos recientes
-        console.log('🔍 [IA Autónoma] Analizando intentos ofensivos...');
+
         const accionesPorIntentos = await analizarIntentosOfensivos(token);
-        console.log(`📊 [IA Autónoma] Acciones por intentos ofensivos: ${accionesPorIntentos.length}`);
-        
+
         if (accionesPorIntentos.length > 0) {
-            console.log('📋 [IA Autónoma] Detalles de acciones por intentos:', accionesPorIntentos);
+
         }
         
         accionesPropuestas.push(...accionesPorIntentos);
-        
-        console.log(`📊 [IA Autónoma] Total de acciones propuestas: ${accionesPropuestas.length}`);
-        
+
         if (accionesPropuestas.length > 0) {
-            console.log(`📊 [IA Autónoma] Detalles completos de acciones:`, accionesPropuestas);
+
         } else {
-            console.log('ℹ️ [IA Autónoma] No se encontraron acciones para proponer');
+
+            // Contar usuarios con diferentes números de advertencias (solo si hay usuarios y no son muchos)
+            if (usuariosAAnalizar.length > 0 && usuariosAAnalizar.length <= 50) {
+                let usuariosConAdvertencias = 0;
+                let usuariosCon2Advertencias = 0;
+                let usuariosCon3MasAdvertencias = 0;
+                let usuariosConBansActivos = 0;
+
+                for (const usuario of usuariosAAnalizar.slice(0, 20)) { // Limitar a primeros 20 para no sobrecargar
+                    try {
+                        const [advertenciasResponse, bansResponse] = await Promise.all([
+                            fetch(`${getApiBaseUrl()}?action=listar_advertencias&token=${token}&usuario_id=${usuario.id}`),
+                            fetch(`${getApiBaseUrl()}?action=listar_bans&token=${token}&usuario_id=${usuario.id}&solo_activos=true`)
+                        ]);
+                        
+                        const advertenciasData = await advertenciasResponse.json();
+                        const bansData = await bansResponse.json();
+                        
+                        const advertenciasActivas = advertenciasData.success ? advertenciasData.advertencias.filter(a => a.activa).length : 0;
+                        const bansActivos = bansData.success ? bansData.bans.filter(b => {
+                            if (!b.activo) return false;
+                            if (b.tipo === 'permanente') return true;
+                            if (b.tipo === 'temporal' && b.fecha_fin) {
+                                return new Date(b.fecha_fin) > new Date();
+                            }
+                            return false;
+                        }).length : 0;
+                        
+                        if (advertenciasActivas > 0) usuariosConAdvertencias++;
+                        if (advertenciasActivas === 2) usuariosCon2Advertencias++;
+                        if (advertenciasActivas >= 3) usuariosCon3MasAdvertencias++;
+                        if (bansActivos > 0) usuariosConBansActivos++;
+                    } catch (e) {
+                        // Ignorar errores en diagnóstico
+                    }
+                }
+
+            } else if (usuariosAAnalizar.length > 50) {
+                // Muchos usuarios
+            }
         }
         
         // Agregar notificaciones (siempre agregar, incluso si se ejecutan después)
@@ -2995,38 +4571,33 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
         const notificacionesAntes = iaNotificaciones.length;
         iaNotificaciones = [...iaNotificaciones, ...accionesPropuestas];
         const notificacionesDespues = iaNotificaciones.length;
-        
-        console.log(`📊 [IA Autónoma] Notificaciones antes: ${notificacionesAntes}, después: ${notificacionesDespues}`);
-        console.log(`✅ [IA Autónoma] Análisis completado. ${accionesPropuestas.length} acciones propuestas.`);
-        console.log(`📊 [IA Autónoma] Total de notificaciones en el sistema: ${iaNotificaciones.length}`);
-        
+
         // Renderizar notificaciones PRIMERO
-        console.log('🎨 [IA Autónoma] Renderizando notificaciones...');
+
         renderNotificacionesIA();
         
         // SIEMPRE ejecutar acciones automáticamente (modo autónomo activo)
         // PERO esperar más tiempo para que las notificaciones se muestren primero
         if (accionesPropuestas.length > 0) {
-            console.log(`⏳ [IA Autónoma] Se encontraron ${accionesPropuestas.length} acciones, esperando 2 segundos antes de ejecutarlas...`);
+
             // Esperar suficiente tiempo para que las notificaciones se rendericen y sean visibles
             setTimeout(() => {
-                console.log('⏳ [IA Autónoma] Ejecutando acciones automáticas después de mostrar notificaciones...');
+
                 ejecutarAccionesAutomaticas(accionesPropuestas);
                 // Re-renderizar después de ejecutar para actualizar el estado
                 setTimeout(() => {
-                    console.log('🎨 [IA Autónoma] Re-renderizando después de ejecutar acciones...');
+
                     renderNotificacionesIA();
                     renderHistorialIA();
                 }, 500);
             }, 2000); // Esperar 2 segundos para que el usuario vea las notificaciones
         } else {
-            console.log('ℹ️ [IA Autónoma] No hay acciones para ejecutar');
+
         }
         
         // SOLO actualizar timestamp de última revisión SI el análisis se completó correctamente
         const tiempoTranscurrido = ((Date.now() - inicioAnalisis) / 1000).toFixed(2);
-        console.log(`✅ [IA Autónoma] Análisis completado exitosamente en ${tiempoTranscurrido} segundos`);
-        console.log('✅ [IA Autónoma] Actualizando última revisión...');
+
         actualizarUltimaRevision();
         
         // Solo mostrar alertas si NO es modo silencioso
@@ -3039,14 +4610,14 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
         } else {
             // En modo silencioso, solo log en consola
             if (accionesPropuestas.length > 0) {
-                console.log(`✅ [IA Autónoma] Análisis completado. ${accionesPropuestas.length} acciones ejecutadas automáticamente.`);
+
             } else {
-                console.log('✅ [IA Autónoma] Análisis completado. No se requieren acciones.');
+
             }
         }
         
     } catch (error) {
-        console.error('❌ [IA Autónoma] Error en análisis de IA:', error);
+
         // Actualizar última revisión incluso si hay error
         actualizarUltimaRevision();
         if (!modoSilencioso) {
@@ -3055,43 +4626,30 @@ window.analizarUsuariosConIA = async function analizarUsuariosConIA(modoSilencio
     }
 };
 
-// Verificar inmediatamente que la función se definió correctamente
-console.log('✅ [Admin.js] ========== VERIFICACIÓN POST-DEFINICIÓN ==========');
-console.log('✅ [Admin.js] Función analizarUsuariosConIA definida');
-console.log('✅ [Admin.js] Verificación inmediata - window.analizarUsuariosConIA:', typeof window.analizarUsuariosConIA);
-if (typeof window.analizarUsuariosConIA !== 'function') {
-    console.error('❌ [Admin.js] ERROR CRÍTICO: window.analizarUsuariosConIA NO se definió correctamente!');
-    console.error('❌ [Admin.js] Esto significa que hay un error de sintaxis antes de esta línea');
-} else {
-    console.log('✅ [Admin.js] window.analizarUsuariosConIA está correctamente definida como función');
-    console.log('✅ [Admin.js] La función está disponible globalmente');
 }
+*/
 
 // Analizar intentos ofensivos recientes y proponer acciones
 async function analizarIntentosOfensivos(token) {
     const acciones = [];
     
     try {
-        console.log('🔍 [IA Autónoma] Analizando intentos ofensivos...');
-        
-        // Obtener intentos ofensivos de las últimas 24 horas
-        const response = await fetch(`../api/api.php?action=get_intentos_ofensivos&token=${token}&limit=50&offset=0`);
+
+        // Obtener intentos ofensivos (aumentar límite para detectar usuarios con muchos intentos)
+        const response = await fetch(`${getApiBaseUrl()}?action=get_intentos_ofensivos&token=${token}&limit=200&offset=0`);
         const data = await response.json();
         
         if (!data.success) {
-            console.error('❌ [IA Autónoma] Error al obtener intentos ofensivos:', data.message);
+
             return acciones;
         }
         
         if (!data.intentos || data.intentos.length === 0) {
-            console.log('ℹ️ [IA Autónoma] No hay intentos ofensivos registrados');
+
             return acciones;
         }
-        
-        console.log(`📊 [IA Autónoma] Encontrados ${data.intentos.length} intentos ofensivos en total`);
-        console.log('📋 [IA Autónoma] Detalles de intentos:', data.intentos);
-        
-        // Filtrar intentos recientes (últimas 24 horas)
+
+        // Filtrar intentos recientes (últimas 24 horas) PERO también considerar todos los intentos para usuarios registrados
         const ahora = new Date();
         const intentosRecientes = data.intentos.filter(intento => {
             const fechaIntento = new Date(intento.fecha_intento);
@@ -3099,9 +4657,11 @@ async function analizarIntentosOfensivos(token) {
             return horasDesdeIntento <= 24;
         });
         
-        console.log(`📊 [IA Autónoma] ${intentosRecientes.length} intentos en las últimas 24 horas`);
-        
-        if (intentosRecientes.length === 0) {
+        // Para usuarios registrados, considerar TODOS los intentos (no solo los de 24 horas)
+        // Esto permite detectar usuarios con muchos intentos acumulados
+        const todosLosIntentos = data.intentos;
+
+        if (intentosRecientes.length === 0 && todosLosIntentos.length === 0) {
             return acciones;
         }
         
@@ -3124,7 +4684,6 @@ async function analizarIntentosOfensivos(token) {
         Object.keys(intentosPorIP).forEach(ip => {
             const intentos = intentosPorIP[ip];
             if (intentos.length >= 1) { // CAMBIADO: antes era >= 3, ahora es >= 1
-                console.log(`⚠️ [IA Autónoma] Detectados ${intentos.length} intento(s) desde IP ${ip}`);
                 acciones.push({
                     tipo: 'notificacion',
                     subtipo: 'intentos_multiples_ip',
@@ -3148,7 +4707,7 @@ async function analizarIntentosOfensivos(token) {
             const intentosRegistro = intentos.filter(i => i.tipo_intento === 'registro_usuario');
             
             if (intentosRegistro.length > 0) {
-                console.log(`🔍 [IA Autónoma] Analizando ${intentosRegistro.length} intentos de registro desde ${email}`);
+
                 // Analizar todos los campos ofensivos encontrados en todos los intentos de este email
                 const todosLosCamposOfensivos = new Set();
                 const contenidoCompleto = {
@@ -3188,14 +4747,7 @@ async function analizarIntentosOfensivos(token) {
                 const detalleTexto = detalleCampos.length > 0 
                     ? ` (${detalleCampos.join(', ')})`
                     : '';
-                
-                console.log(`🚫 [IA Autónoma] Detectado${intentosRegistro.length > 1 ? 's' : ''} ${intentosRegistro.length} intento${intentosRegistro.length > 1 ? 's' : ''} de registro rechazado desde ${email}${detalleTexto}`);
-                console.log(`📋 [IA Autónoma] Campos ofensivos encontrados:`, camposUnicos);
-                console.log(`📋 [IA Autónoma] Contenido ofensivo detectado:`, {
-                    nombres: Array.from(contenidoCompleto.nombres),
-                    passwords: Array.from(contenidoCompleto.passwords)
-                });
-                
+
                 const nuevaNotificacion = {
                     tipo: 'notificacion',
                     subtipo: 'intentos_registro_rechazado',
@@ -3216,78 +4768,155 @@ async function analizarIntentosOfensivos(token) {
                     usuario: null,
                     esIntento: true
                 };
-                
-                console.log(`✅ [IA Autónoma] Generando notificación para email ${email}:`, nuevaNotificacion);
+
                 acciones.push(nuevaNotificacion);
-                console.log(`📊 [IA Autónoma] Total de acciones generadas hasta ahora: ${acciones.length}`);
+
             }
         });
         
-        // Notificar sobre intentos de usuarios registrados
-        const intentosDeUsuariosRegistrados = intentosRecientes.filter(i => i.usuario_id && i.usuario_nombre);
+        // Notificar sobre intentos de usuarios registrados Y PROPOR ACCIONES AUTOMÁTICAS
+        // IMPORTANTE: Usar TODOS los intentos para usuarios registrados, no solo los de 24 horas
+        const intentosDeUsuariosRegistrados = todosLosIntentos.filter(i => i.usuario_id && i.usuario_nombre);
         if (intentosDeUsuariosRegistrados.length > 0) {
-            console.log(`⚠️ [IA Autónoma] Detectados ${intentosDeUsuariosRegistrados.length} intentos de usuarios registrados`);
             const usuariosAfectados = [...new Set(intentosDeUsuariosRegistrados.map(i => i.usuario_id))];
             
             usuariosAfectados.forEach(usuarioId => {
+                // Contar TODOS los intentos de este usuario (no solo los de 24 horas)
                 const intentosUsuario = intentosDeUsuariosRegistrados.filter(i => i.usuario_id === usuarioId);
                 const usuario = intentosUsuario[0];
                 
-                console.log(`⚠️ [IA Autónoma] Usuario ${usuario.usuario_nombre} tiene ${intentosUsuario.length} intento(s) ofensivo(s)`);
-                acciones.push({
-                    tipo: 'notificacion',
-                    subtipo: 'usuario_con_intentos_ofensivos',
-                    usuario_id: usuarioId,
-                    cantidad: intentosUsuario.length,
-                    motivo: `⚠️ El usuario ${usuario.usuario_nombre} (${usuario.usuario_email}) intentó publicar contenido ofensivo ${intentosUsuario.length} vez(ces) en las últimas 24 horas.`,
-                    prioridad: 'alta',
-                    razonamiento: `Usuario registrado con comportamiento ofensivo${intentosUsuario.length > 1 ? ' recurrente' : ''}. Se recomienda revisar su historial y considerar acciones disciplinarias.`,
-                    timestamp: new Date().toISOString(),
-                    usuario: {
-                        id: usuarioId,
-                        nombre: usuario.usuario_nombre,
-                        email: usuario.usuario_email
-                    },
-                    esIntento: true
-                });
+                // También contar intentos recientes para el mensaje
+                const intentosRecientesUsuario = intentosRecientes.filter(i => i.usuario_id === usuarioId);
+
+                // IMPORTANTE: Si un usuario tiene muchos intentos, proponer acción automática
+                if (intentosUsuario.length >= 20) {
+                    // Más de 20 intentos → Ban permanente automático
+
+                    acciones.push({
+                        tipo: 'ban',
+                        subtipo: 'permanente',
+                        usuario_id: usuarioId,
+                        dias: null,
+                        motivo: `Ban permanente automático: El usuario ${usuario.usuario_nombre} ha intentado publicar contenido ofensivo ${intentosUsuario.length} veces. Este comportamiento recurrente y masivo justifica un ban permanente.`,
+                        prioridad: 'critica',
+                        razonamiento: `Usuario con ${intentosUsuario.length} intentos ofensivos detectados. Este es un patrón de comportamiento claramente malicioso y recurrente que requiere acción inmediata.`,
+                        timestamp: new Date().toISOString(),
+                        usuario: {
+                            id: usuarioId,
+                            nombre: usuario.usuario_nombre,
+                            email: usuario.usuario_email
+                        },
+                        esIntento: true
+                    });
+                } else if (intentosUsuario.length >= 10) {
+                    // Entre 10 y 19 intentos → Ban temporal de 14 días
+
+                    acciones.push({
+                        tipo: 'ban',
+                        subtipo: 'temporal',
+                        usuario_id: usuarioId,
+                        dias: 14,
+                        motivo: `Ban temporal automático: El usuario ${usuario.usuario_nombre} ha intentado publicar contenido ofensivo ${intentosUsuario.length} veces en las últimas 24 horas. Se aplica ban temporal de 14 días como medida preventiva.`,
+                        prioridad: 'alta',
+                        razonamiento: `Usuario con ${intentosUsuario.length} intentos ofensivos detectados. Este comportamiento recurrente requiere una acción disciplinaria inmediata.`,
+                        timestamp: new Date().toISOString(),
+                        usuario: {
+                            id: usuarioId,
+                            nombre: usuario.usuario_nombre,
+                            email: usuario.usuario_email
+                        },
+                        esIntento: true
+                    });
+                } else if (intentosUsuario.length >= 5) {
+                    // Entre 5 y 9 intentos → Ban temporal de 7 días
+
+                    acciones.push({
+                        tipo: 'ban',
+                        subtipo: 'temporal',
+                        usuario_id: usuarioId,
+                        dias: 7,
+                        motivo: `Ban temporal automático: El usuario ${usuario.usuario_nombre} ha intentado publicar contenido ofensivo ${intentosUsuario.length} veces en las últimas 24 horas. Se aplica ban temporal de 7 días.`,
+                        prioridad: 'alta',
+                        razonamiento: `Usuario con ${intentosUsuario.length} intentos ofensivos detectados. Este comportamiento recurrente requiere una acción disciplinaria.`,
+                        timestamp: new Date().toISOString(),
+                        usuario: {
+                            id: usuarioId,
+                            nombre: usuario.usuario_nombre,
+                            email: usuario.usuario_email
+                        },
+                        esIntento: true
+                    });
+                } else {
+                    // Menos de 5 intentos → Solo notificación
+                    acciones.push({
+                        tipo: 'notificacion',
+                        subtipo: 'usuario_con_intentos_ofensivos',
+                        usuario_id: usuarioId,
+                        cantidad: intentosUsuario.length,
+                        motivo: `⚠️ El usuario ${usuario.usuario_nombre} (${usuario.usuario_email}) intentó publicar contenido ofensivo ${intentosUsuario.length} vez(ces) en las últimas 24 horas.`,
+                        prioridad: 'alta',
+                        razonamiento: `Usuario registrado con comportamiento ofensivo${intentosUsuario.length > 1 ? ' recurrente' : ''}. Se recomienda revisar su historial y considerar acciones disciplinarias.`,
+                        timestamp: new Date().toISOString(),
+                        usuario: {
+                            id: usuarioId,
+                            nombre: usuario.usuario_nombre,
+                            email: usuario.usuario_email
+                        },
+                        esIntento: true
+                    });
+                }
             });
         }
-        
-        console.log(`✅ [IA Autónoma] Análisis de intentos completado. ${acciones.length} notificación(es) generada(s)`);
-        
+
         if (acciones.length > 0) {
-            console.log(`📋 [IA Autónoma] Detalles de las notificaciones generadas:`, acciones);
+
         } else {
-            console.log('ℹ️ [IA Autónoma] No se generaron notificaciones. Posibles razones:');
-            console.log('   - No hay suficientes intentos desde la misma IP (mínimo 3 para IP)');
-            console.log('   - No hay intentos de registro rechazados');
-            console.log('   - Los intentos son de hace más de 24 horas');
-            console.log(`   - Intentos recientes encontrados: ${intentosRecientes.length}`);
+
         }
         
     } catch (error) {
-        console.error('❌ [IA Autónoma] Error al analizar intentos ofensivos:', error);
-        console.error('❌ [IA Autónoma] Stack trace:', error.stack);
+
     }
-    
-    console.log(`📤 [IA Autónoma] Retornando ${acciones.length} acciones desde analizarIntentosOfensivos`);
+
     return acciones;
 }
 
 // Decidir qué acción automática tomar basada en el análisis
 function decidirAccionAutomatica(usuario, advertencias, bans) {
     const advertenciasActivas = advertencias.length;
-    const bansActivos = bans.filter(b => b.activo);
+    
+    // Filtrar bans activos correctamente (temporales solo si no han expirado)
+    const ahora = new Date();
+    const bansActivos = bans.filter(b => {
+        if (!b.activo) return false;
+        if (b.tipo === 'permanente') return true;
+        if (b.tipo === 'temporal') {
+            if (!b.fecha_fin) return true; // Si no tiene fecha_fin, considerar activo
+            return new Date(b.fecha_fin) > ahora; // Solo activo si fecha_fin es futura
+        }
+        return false;
+    });
+    
     const bansPermanentes = bansActivos.filter(b => b.tipo === 'permanente').length;
     const bansTemporales = bansActivos.filter(b => b.tipo === 'temporal').length;
     
+    // Log detallado SOLO para usuarios con advertencias
+    if (advertenciasActivas > 0) {
+    }
+
     // No hacer nada si ya tiene ban permanente
     if (bansPermanentes > 0) {
+        if (advertenciasActivas > 0) {
+
+        }
         return null;
     }
     
     // No hacer nada si ya tiene ban temporal activo (evitar duplicados)
     if (bansTemporales > 0) {
+        if (advertenciasActivas > 0) {
+
+        }
         return null;
     }
     
@@ -3360,11 +4989,10 @@ function decidirAccionAutomatica(usuario, advertencias, bans) {
 
 // Ejecutar acciones automáticas
 async function ejecutarAccionesAutomaticas(acciones) {
-    console.log('🤖 [IA Autónoma] Ejecutando acciones automáticas...');
-    
+
     const token = window.adminAuthSystem ? window.adminAuthSystem.getToken() : '';
     if (!token) {
-        console.error('No hay token de autenticación');
+
         return;
     }
     
@@ -3372,7 +5000,7 @@ async function ejecutarAccionesAutomaticas(acciones) {
         try {
             // Las notificaciones de tipo 'notificacion' son solo informativas, no requieren acción
             if (accion.tipo === 'notificacion') {
-                console.log('📋 [IA Autónoma] Procesando notificación:', accion.motivo);
+
                 // Buscar la notificación por múltiples criterios para asegurar que se encuentre
                 const notifIndex = iaNotificaciones.findIndex(n => {
                     // Comparar por timestamp (si existe)
@@ -3392,11 +5020,11 @@ async function ejecutarAccionesAutomaticas(acciones) {
                 });
                 
                 if (notifIndex !== -1) {
-                    console.log(`✅ [IA Autónoma] Notificación encontrada en índice ${notifIndex}, marcando como ejecutada`);
+
                     iaNotificaciones[notifIndex].ejecutada = true;
                     iaNotificaciones[notifIndex].fechaEjecucion = new Date().toISOString();
                 } else {
-                    console.warn('⚠️ [IA Autónoma] No se encontró la notificación para marcar como ejecutada:', accion);
+
                 }
                 
                 // Agregar al historial como notificación vista
@@ -3412,12 +5040,28 @@ async function ejecutarAccionesAutomaticas(acciones) {
             
             let resultado;
             
-            if (accion.tipo === 'advertencia' && accion.usuario && accion.usuario.id) {
-                resultado = await ejecutarAdvertenciaAutomatica(accion.usuario.id, accion.motivo, token);
-            } else if (accion.tipo === 'ban' && accion.usuario && accion.usuario.id) {
-                resultado = await ejecutarBanAutomatico(accion.usuario.id, accion.subtipo, accion.dias || 7, accion.motivo, token);
+            // Manejar acciones de advertencia
+            if (accion.tipo === 'advertencia') {
+                const usuarioId = accion.usuario?.id || accion.usuario_id;
+                if (usuarioId) {
+                    resultado = await ejecutarAdvertenciaAutomatica(usuarioId, accion.motivo, token);
+                } else {
+
+                    continue;
+                }
+            } 
+            // Manejar acciones de ban
+            else if (accion.tipo === 'ban') {
+                const usuarioId = accion.usuario?.id || accion.usuario_id;
+                if (usuarioId) {
+                    const dias = accion.subtipo === 'permanente' ? null : (accion.dias || 7);
+                    resultado = await ejecutarBanAutomatico(usuarioId, accion.subtipo, dias, accion.motivo, token);
+                } else {
+
+                    continue;
+                }
             } else {
-                console.warn('Acción sin usuario válido:', accion);
+
                 continue;
             }
             
@@ -3450,7 +5094,7 @@ async function ejecutarAccionesAutomaticas(acciones) {
             
         } catch (error) {
             const usuarioId = accion.usuario?.id || 'desconocido';
-            console.error(`Error al ejecutar acción para usuario ${usuarioId}:`, error);
+
             iaHistorial.push({
                 ...accion,
                 ejecutada: false,
@@ -3472,7 +5116,7 @@ async function ejecutarAccionesAutomaticas(acciones) {
 
 // Ejecutar advertencia automática
 async function ejecutarAdvertenciaAutomatica(usuarioId, motivo, token) {
-    const response = await fetch('../api/api.php?action=dar_advertencia', {
+    const response = await fetch(`${getApiBaseUrl()}?action=dar_advertencia`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, usuario_id: usuarioId, motivo })
@@ -3483,7 +5127,7 @@ async function ejecutarAdvertenciaAutomatica(usuarioId, motivo, token) {
 
 // Ejecutar ban automático
 async function ejecutarBanAutomatico(usuarioId, tipo, dias, motivo, token) {
-    const response = await fetch('../api/api.php?action=dar_ban', {
+    const response = await fetch(`${getApiBaseUrl()}?action=dar_ban`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -3498,20 +5142,17 @@ async function ejecutarBanAutomatico(usuarioId, tipo, dias, motivo, token) {
     return await response.json();
 }
 
-// Renderizar notificaciones
+/*
 function renderNotificacionesIA() {
     const container = document.getElementById('iaNotificaciones');
     if (!container) {
-        console.warn('⚠️ [IA Autónoma] Elemento iaNotificaciones no encontrado');
+
         return;
     }
-    
-    console.log(`🔍 [IA Autónoma] Renderizando notificaciones. Total: ${iaNotificaciones.length}`);
-    
+
     // Filtrar solo notificaciones no ejecutadas para mostrar
     const notificacionesPendientes = iaNotificaciones.filter(n => !n.ejecutada);
-    console.log(`📊 [IA Autónoma] Notificaciones pendientes: ${notificacionesPendientes.length}`);
-    
+
     if (iaNotificaciones.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; padding: 2rem; color: #999;">
@@ -3632,24 +5273,19 @@ function renderNotificacionesIA() {
             </div>
         `;
     });
-    
-    console.log(`✅ [IA Autónoma] HTML generado para ${notificacionesOrdenadas.length} notificaciones`);
-    console.log(`📋 [IA Autónoma] Longitud del HTML: ${html.length} caracteres`);
+
     if (html.length > 0) {
-        console.log(`📋 [IA Autónoma] Primeros 500 caracteres del HTML:`, html.substring(0, 500));
+        );
     }
     
     container.innerHTML = html;
-    
-    console.log(`✅ [IA Autónoma] Notificaciones renderizadas en el DOM`);
-    console.log(`🔍 [IA Autónoma] Verificando elemento después de renderizar:`, {
-        existe: !!container,
-        tieneHTML: container.innerHTML.length > 0,
-        longitudHTML: container.innerHTML.length
-    });
+
 }
 
-// Renderizar historial
+}
+*/
+
+/*
 function renderHistorialIA() {
     const container = document.getElementById('iaHistorial');
     if (!container) return;
@@ -3758,65 +5394,57 @@ window.ejecutarAccionManual = async function(index) {
             alert('❌ Error al ejecutar acción: ' + (resultado?.message || 'Error desconocido'));
         }
     } catch (error) {
-        console.error('Error:', error);
+
         alert('Error al ejecutar acción: ' + error.message);
     }
 }
 
 // Descartar notificación (global para onclick)
+}
+*/
+
+/*
 window.descartarNotificacion = function(index) {
     iaNotificaciones.splice(index, 1);
     renderNotificacionesIA();
 }
+*/
 
-// Limpiar notificaciones
+/*
 function limpiarNotificacionesIA() {
     if (confirm('¿Estás seguro de que deseas limpiar todas las notificaciones?')) {
         iaNotificaciones = [];
         renderNotificacionesIA();
     }
 }
+*/
 
 // Verificación FINAL de que las funciones están disponibles (ejecutar inmediatamente al final del script)
 (function() {
-    console.log('✅ [Admin.js] ========== VERIFICACIÓN FINAL DEL SCRIPT ==========');
-    console.log('✅ [Admin.js] Script cargado completamente');
-    
-    const funciones = {
-        loadIntentosOfensivos: typeof window.loadIntentosOfensivos,
-        analizarUsuariosConIA: typeof window.analizarUsuariosConIA,
-        iniciarIAAutonoma: typeof window.iniciarIAAutonoma,
-        actualizarUltimaRevision: typeof window.actualizarUltimaRevision
-    };
-    
-    console.log('✅ [Admin.js] Verificación FINAL de funciones:', funciones);
+    // Verificar loadApelaciones
+    if (typeof window.loadApelaciones !== 'function') {
+
+        window.loadApelaciones = async function() {
+            alert('Error: La función no se cargó correctamente. Por favor, recarga la página (Ctrl+F5).');
+        };
+    }
     
     // Verificar loadIntentosOfensivos
     if (typeof window.loadIntentosOfensivos !== 'function') {
-        console.error('❌ [Admin.js] ERROR CRÍTICO: La función loadIntentosOfensivos NO está disponible al final del script!');
+
         window.loadIntentosOfensivos = function() {
             alert('Error: La función no se cargó correctamente. Por favor, recarga la página (Ctrl+F5).');
-            console.error('❌ Función de emergencia ejecutada - la función original no está disponible');
+
         };
-        console.log('⚠️ [Admin.js] Función de emergencia definida para loadIntentosOfensivos');
+
     }
     
-    // Verificar analizarUsuariosConIA
-    if (typeof window.analizarUsuariosConIA !== 'function') {
-        console.error('❌ [Admin.js] ERROR CRÍTICO: La función analizarUsuariosConIA NO está disponible al final del script!');
-        console.error('❌ [Admin.js] Esto significa que hubo un error que impidió su definición.');
-        console.error('❌ [Admin.js] Revisa la consola para errores de sintaxis anteriores.');
-        
-        // Intentar definir una función de emergencia
-        window.analizarUsuariosConIA = async function() {
-            console.error('❌ Función de emergencia ejecutada - la función original no está disponible');
-            alert('Error: La función de análisis no se cargó correctamente. Por favor, recarga la página (Ctrl+F5).');
-        };
-        console.log('⚠️ [Admin.js] Función de emergencia definida para analizarUsuariosConIA');
-    } else {
-        console.log('✅ [Admin.js] analizarUsuariosConIA está correctamente disponible en window');
-    }
-    
-    console.log('✅ [Admin.js] Verificación final completada');
+    // IA Autónoma desactivada - comentado
+    // if (typeof window.analizarUsuariosConIA !== 'function') {
+    //     
+    // } else {
+    //     
+    // }
+
 })();
 

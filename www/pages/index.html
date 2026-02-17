@@ -6,9 +6,9 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>Registro de Animales - Contraloría Social Tamaulipas</title>
+    <title>Registro de Animales - Organic Journal</title>
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#4D8143">
@@ -18,11 +18,64 @@
     <meta name="apple-mobile-web-app-title" content="ProNatura">
     <link rel="manifest" href="../manifest.json">
     <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
-    <link rel="icon" type="image/png" href="../assets/icons/icon-96x96.png">
-    <link rel="shortcut icon" type="image/png" href="../assets/icons/icon-96x96.png">
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
 
     <link rel="stylesheet" href="../assets/css/styles.css">
     <script>
+        // VERIFICAR BAN ANTES DE ESTABLECER CUALQUIER FLAG
+        // Esto debe ejecutarse ANTES de que auth.js se cargue para bloquear usuarios baneados
+        (function() {
+            try {
+                const sessionData = sessionStorage.getItem('current_session') || localStorage.getItem('current_session');
+                if (sessionData) {
+                    const session = JSON.parse(sessionData);
+                    if (session && session.id) {
+                        // Verificar ban inmediatamente ANTES de permitir acceso
+                        fetch('../api/api.php?action=check_ban_status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ usuario_id: session.id, email: session.email })
+                        }).then(response => response.json()).then(data => {
+                            if (data.banned) {
+                                // Usuario baneado - guardar información y redirigir a apelación
+                                if (data.ban) {
+                                    sessionStorage.setItem('ban_id_apelar', data.ban.id);
+                                    sessionStorage.setItem('usuario_id_apelar', session.id); // Guardar usuario_id directamente
+                                    sessionStorage.setItem('email_apelar', session.email);
+                                    sessionStorage.setItem('ban_motivo', data.ban.motivo);
+                                    sessionStorage.setItem('ban_tipo', data.ban.tipo);
+                                }
+                                sessionStorage.removeItem('index_acceso_permitido');
+                                // NO limpiar sesión todavía - mantener para apelación
+                                // Redirigir directamente a página de apelación
+                                // Como index.html está en /pages/, usar ruta relativa simple
+                                const currentUrl = window.location.href.toLowerCase();
+                                const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                                   currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                                   currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                                
+                                let apelarPath;
+                                if (isHostinger) {
+                                    // En Hostinger, usar ruta absoluta
+                                    apelarPath = '/pages/apelar-ban.html';
+                                } else {
+                                    // En local, index.html está en /pages/, así que usar ruta relativa simple
+                                    apelarPath = 'apelar-ban.html';
+                                }
+
+                                window.location.href = apelarPath;
+                            }
+                        }).catch(error => {
+
+                        });
+                    }
+                }
+            } catch (error) {
+
+            }
+        })();
+        
         // ESTABLECER FLAG DE ACCESO PERMITIDO INMEDIATAMENTE si viene de navegación interna
         // Esto debe ejecutarse ANTES de que auth.js se cargue para evitar redirecciones
         (function() {
@@ -38,7 +91,7 @@
             if (navegandoInternamente) {
                 sessionStorage.setItem('index_acceso_permitido', 'true');
                 sessionStorage.removeItem('navegando_internamente'); // Limpiar flag
-                console.log('✅ [index.html HEAD] Flag de navegación interna detectado - ACCESO PERMITIDO');
+
                 return; // Salir inmediatamente
             }
             
@@ -65,25 +118,21 @@
             // REGLA GENERAL: Si hay sesión activa, PERMITIR SIEMPRE
             if (tieneSesion) {
                 sessionStorage.setItem('index_acceso_permitido', 'true');
-                console.log('✅ [index.html HEAD] Sesión activa detectada - ACCESO PERMITIDO');
+
                 return;
             }
             
             // Si viene de navegación interna O tiene flags activos, PERMITIR
             if (esNavegacionInterna || vieneDeCancelacion || vieneDeLogin) {
                 sessionStorage.setItem('index_acceso_permitido', 'true');
-                console.log('✅ [index.html HEAD] Flag de acceso permitido establecido INMEDIATAMENTE');
-                console.log('🔍 [index.html HEAD] Referrer:', referrer);
-                console.log('🔍 [index.html HEAD] Viene de cancelación:', vieneDeCancelacion);
-                console.log('🔍 [index.html HEAD] Viene de login:', vieneDeLogin);
-                console.log('🔍 [index.html HEAD] Es navegación interna:', esNavegacionInterna);
+
                 return;
             }
             
             // Si NO hay referrer (puede ser recarga o navegación directa), PERMITIR por seguridad
             if (!referrer || referrer.length === 0) {
                 sessionStorage.setItem('index_acceso_permitido', 'true');
-                console.log('✅ [index.html HEAD] Referrer vacío - PERMITIENDO ACCESO por seguridad');
+
                 return;
             }
             
@@ -93,12 +142,12 @@
                                                referrer.includes('registro.html');
             
             if (vieneDeInicioLoginRegistro && !tieneSesion) {
-                console.log('⚠️ [index.html HEAD] Viene de inicio/login/registro SIN sesión - NO establecer flag');
+
                 // NO establecer flag - dejar que auth.js maneje la redirección
             } else {
                 // En cualquier otro caso, establecer flag por seguridad
                 sessionStorage.setItem('index_acceso_permitido', 'true');
-                console.log('✅ [index.html HEAD] Flag establecido por seguridad');
+
             }
         })();
     </script>
@@ -134,7 +183,7 @@
 
     <!-- Header -->
 
-    <header class="header">
+    <header class="header teal-header">
 
         <h1>Registro de Animales</h1>
 
@@ -164,6 +213,14 @@
 
             </a>
 
+            <a href="grupos.html" class="nav-item" id="gruposNavItem" style="display: none;">
+
+                <span class="nav-icon">👥</span>
+
+                Grupos
+
+            </a>
+
             <a href="admin.html" class="nav-item admin-nav-item" id="adminNavItem" style="display: none;">
 
                 <span class="nav-icon">⚙</span>
@@ -174,17 +231,46 @@
 
         </nav>
 
-        <div class="user-info">
-
-            <span id="userName" class="user-name"></span>
-
-            <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">🚪</button>
-
+        <div class="user-info" id="userInfoWrap">
+            <div class="profile-dropdown-wrapper">
+                <button type="button" class="profile-trigger" id="profileTrigger" aria-expanded="false" aria-haspopup="true" aria-label="Abrir menú de usuario">
+                    <span class="profile-avatar" id="profileAvatar" style="width:22px;height:22px;min-width:22px;min-height:22px;max-width:22px;max-height:22px;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%"><img src="../assets/icons/perfil-removebg-preview.png" alt="" style="width:100%;height:100%;max-width:22px;max-height:22px;object-fit:cover;display:block"></span>
+                    <span class="user-name" id="userName"></span>
+                    <span class="profile-chevron" aria-hidden="true">▼</span>
+                </button>
+                <div class="profile-dropdown" id="profileDropdown" role="menu" hidden style="position: absolute !important; top: 100% !important; right: 0 !important; left: auto !important; width: 320px !important;">
+                <div class="profile-dropdown-header">
+                    <div class="profile-dropdown-name" id="profileDropdownName"></div>
+                    <div class="profile-dropdown-email" id="profileDropdownEmail"></div>
+                </div>
+                <div class="profile-dropdown-links" style="display: flex !important; flex-direction: column !important; gap: 0.5rem !important; padding: 0.75rem !important;">
+                    <a href="catalogo.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🌳</span> Catálogo de categorías</a>
+                    <a href="recuperar-contraseña.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🔐</span> Cambiar contraseña</a>
+                    <a href="inicio.html" class="profile-dropdown-link" role="menuitem" style="display: block !important; width: 100% !important; margin-bottom: 0.5rem !important;"><span class="profile-dropdown-icon">🏠</span> Ir al inicio</a>
+                    <a href="admin.html" class="profile-dropdown-link" id="profileDropdownAdmin" style="display: none; width: 100% !important; margin-bottom: 0.5rem !important;" role="menuitem"><span class="profile-dropdown-icon">⚙</span> Administración</a>
+                </div>
+                <div class="profile-dropdown-divider"></div>
+                <button type="button" class="profile-dropdown-item logout" id="profileLogoutBtn" role="menuitem"><span class="profile-dropdown-icon">🚪</span> Cerrar sesión</button>
+                </div>
+            </div>
         </div>
-
     </header>
-
-
+    <script>
+    (function(){ var p = (window.location.pathname || ''); var base = p.indexOf('/pages/') !== -1 ? '../' : ''; var el = document.getElementById('profileAvatar'); if (el) { var img = el.querySelector('img'); if (img) img.src = base + 'assets/icons/perfil-removebg-preview.png'; } })();
+    (function(){ var path = window.location.pathname || ''; if (path.indexOf('/pages/') === -1) { var segs = path.split('/').filter(Boolean); if (segs.length <= 1) { document.querySelectorAll('.nav-bar .nav-item').forEach(function(a){ var h = a.getAttribute('href'); if (h && !/^https?:/.test(h) && h.charAt(0) !== '/') a.setAttribute('href', 'pages/' + h); }); } } })();
+    </script>
+    <!-- Modal: ¿Acceder a chats o nueva solicitud? -->
+    <div id="chatChoiceModal" class="email-modal" style="display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);">
+        <div class="email-modal-content chat-choice-content" style="background: rgba(255,255,255,0.7); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 16px; padding: 2rem 2.25rem; max-width: 420px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8);">
+            <h2>💬 Chat de Ejidos</h2>
+            <p style="margin: 1rem 0;">¿Qué deseas hacer?</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" id="btnAccederChats" class="btn-primary" style="width: 100%; padding: 0.9rem;">Acceder a mis chats</button>
+                <button type="button" id="btnNuevaSolicitud" class="btn-secondary" style="width: 100%; padding: 0.9rem;">Enviar nueva solicitud</button>
+                <button type="button" id="btnCancelarChatChoice" class="btn-secondary" style="width: 100%; padding: 0.6rem; background: #e0e0e0;">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Search and Action Bar -->
 
@@ -220,8 +306,6 @@
 
     </div>
 
-    
-
     <!-- Filtros de Categoría y Subcategoría -->
 
     <div class="filter-container" style="padding: 1rem 2rem; background: white; border-bottom: 1px solid #e0e0e0;">
@@ -246,8 +330,6 @@
 
     </div>
 
-
-
     <!-- Main Content -->
 
     <main class="main-content">
@@ -259,8 +341,6 @@
         </div>
 
     </main>
-
-
 
     <!-- Modal para confirmar eliminación -->
 
@@ -284,8 +364,6 @@
 
     </div>
 
-
-
     <script src="../assets/js/auth.js"></script>
 
     <script src="../assets/js/script.js"></script>
@@ -299,7 +377,7 @@
             const vieneDeLogin = sessionStorage.getItem('vieneDeLogin') === 'true';
             if (vieneDeLogin) {
                 sessionStorage.removeItem('vieneDeLogin');
-                console.log('✅ Flag vieneDeLogin limpiado');
+
             }
             
             // INTERCEPTAR CLICS EN ENLACES DE NAVEGACIÓN para establecer flag antes de navegar
@@ -309,8 +387,7 @@
                     const href = this.getAttribute('href');
                     // Si NO es index.html (Biblioteca), establecer flag de navegación interna
                     if (href && href !== 'index.html' && !href.includes('inicio.html') && !href.includes('login.html') && !href.includes('registro.html')) {
-                        console.log('🔗 [index.html] Navegando a:', href);
-                        console.log('✅ [index.html] Estableciendo flag de navegación interna');
+
                         // Establecer flag que indica que el usuario está navegando internamente
                         sessionStorage.setItem('navegando_internamente', 'true');
                         sessionStorage.setItem('pagina_destino', href);
@@ -319,8 +396,7 @@
                     }
                 });
             });
-            
-            console.log('✅ Interceptores de navegación configurados');
+
         });
 
         // Mostrar información del usuario
@@ -331,9 +407,12 @@
 
             if (user) {
 
-                document.getElementById('userName').textContent = `👤 ${user.nombre}`;
-
-                
+                const nombre = user.nombre || 'Usuario';
+                const inicial = nombre.charAt(0).toUpperCase();
+                document.getElementById('userName').textContent = nombre;
+                var av = document.getElementById('profileAvatar'); if (av && !av.querySelector('img')) av.textContent = inicial;
+                document.getElementById('profileDropdownName').textContent = nombre;
+                document.getElementById('profileDropdownEmail').textContent = user.email || '';
 
                 // Verificar rol desde la API si no está en la sesión
 
@@ -361,58 +440,145 @@
 
                     } catch (error) {
 
-                        console.error('Error al obtener rol del usuario:', error);
-
                     }
 
                 }
 
-                
-
                 // Mostrar botón de administración si es admin
-
                 if (userRol === 'admin') {
-
                     const adminNavItem = document.getElementById('adminNavItem');
-
                     if (adminNavItem) {
-
                         adminNavItem.style.display = 'flex';
-
-                        console.log('Botón de administración mostrado');
-
                     }
+                    const profileAdmin = document.getElementById('profileDropdownAdmin');
+                    if (profileAdmin) {
+                        profileAdmin.style.display = 'flex';
+                    }
+                }
 
-                } else {
+                // Mostrar enlace de Grupos si está autenticado
+                const gruposNavItem = document.getElementById('gruposNavItem');
+                if (gruposNavItem) {
+                    gruposNavItem.style.display = 'flex';
 
-                    console.log('Usuario no es admin. Rol:', userRol);
+                    // Interceptar clic en Grupos: mostrar pregunta "¿Acceder a chats o nueva solicitud?"
+                    gruposNavItem.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const modal = document.getElementById('chatChoiceModal');
+                        if (modal) {
+                            modal.style.display = 'flex';
+                            modal.classList.add('show');
+                        }
+                    });
 
+                    // Botones del modal de elección chat/solicitud
+                    (function() {
+                        const modal = document.getElementById('chatChoiceModal');
+                        const btnChats = document.getElementById('btnAccederChats');
+                        const btnSolicitud = document.getElementById('btnNuevaSolicitud');
+                        const btnCancelar = document.getElementById('btnCancelarChatChoice');
+                        if (!modal) return;
+
+                        function closeModal() {
+                            modal.style.display = 'none';
+                            modal.classList.remove('show');
+                        }
+                        async function goToChat() {
+                            const baseUrl = window.location.origin;
+                            const path = window.location.pathname;
+                            const basePath = path.includes('/pages/') ? path.substring(0, path.lastIndexOf('/') + 1) : (path.replace(/[^/]*$/, '') || '/');
+                            let estado = sessionStorage.getItem('chat_estado') || '';
+                            let municipio = sessionStorage.getItem('chat_municipio') || '';
+                            let ciudad = sessionStorage.getItem('chat_ciudad') || '';
+                            if (!estado) {
+                                try {
+                                    const sessionJson = sessionStorage.getItem('current_session') || localStorage.getItem('current_session');
+                                    const session = sessionJson ? JSON.parse(sessionJson) : null;
+                                    const userId = session && session.id != null ? parseInt(session.id, 10) : 0;
+                                    if (userId > 0 && userId < 2000000000) {
+                                        const apiBase = path.includes('/pages/') ? (baseUrl + basePath + '../api/chat_api.php') : (baseUrl + '/api/chat_api.php');
+                                        const res = await fetch(apiBase + '?action=obtener_grupos&usuario_id=' + userId);
+                                        const data = await res.json();
+                                        if (data.success && data.grupos && data.grupos.length > 0) {
+                                            const preferir = data.grupos.find(function(g) { return (g.nombre || '').trim() !== 'Ejidos México'; });
+                                            const grupo = preferir || data.grupos[0];
+                                            const nombre = (grupo.nombre || '').trim();
+                                            if ((grupo.nombre || '').trim() !== 'Ejidos México') {
+                                                if ((grupo.estado || '').trim()) estado = (grupo.estado || '').trim();
+                                                else if (nombre.indexOf('Ejidos ') === 0) estado = nombre.substring(7);
+                                            }
+                                        }
+                                    }
+                                } catch (e) { }
+                            }
+                            closeModal();
+                            let chatUrl = path.includes('/pages/') ? baseUrl + path.replace('index.html', 'chat.html') : baseUrl + '/pages/chat.html';
+                            if (estado) {
+                                chatUrl += '?estado=' + encodeURIComponent(estado);
+                                if (municipio) chatUrl += '&municipio=' + encodeURIComponent(municipio);
+                                if (ciudad) chatUrl += '&ciudad=' + encodeURIComponent(ciudad);
+                            }
+                            window.location.href = chatUrl;
+                        }
+                        function goToGrupos() {
+                            const baseUrl = window.location.origin;
+                            const path = window.location.pathname;
+                            const gruposUrl = path.includes('/pages/') ? baseUrl + path.replace('index.html', 'grupos.html') : baseUrl + '/pages/grupos.html';
+                            closeModal();
+                            window.location.href = gruposUrl;
+                        }
+
+                        if (btnChats) btnChats.addEventListener('click', goToChat);
+                        if (btnSolicitud) btnSolicitud.addEventListener('click', goToGrupos);
+                        if (btnCancelar) btnCancelar.addEventListener('click', closeModal);
+                        modal.addEventListener('click', function(ev) {
+                            if (ev.target === modal) closeModal();
+                        });
+                    })();
                 }
 
             }
 
-            
+            // Menú de perfil plegable
+            const profileTrigger = document.getElementById('profileTrigger');
+            const profileDropdown = document.getElementById('profileDropdown');
+            const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
-            // Botón cerrar sesión
+            if (profileTrigger && profileDropdown) {
+                profileTrigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const isOpen = profileDropdown.classList.toggle('is-open');
+                    profileTrigger.classList.toggle('is-open', isOpen);
+                    profileTrigger.setAttribute('aria-expanded', isOpen);
+                    profileDropdown.hidden = !isOpen;
+                });
+                document.addEventListener('click', function() {
+                    profileDropdown.classList.remove('is-open');
+                    profileTrigger.classList.remove('is-open');
+                    profileTrigger.setAttribute('aria-expanded', 'false');
+                    profileDropdown.hidden = true;
+                });
+            }
 
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-
-                if (confirm('¿Deseas cerrar sesión?')) {
-
-                    window.authSystem.logout();
-
-                    window.location.href = 'inicio.html';
-
-                }
-
-            });
+            if (profileLogoutBtn) {
+                profileLogoutBtn.addEventListener('click', () => {
+                    if (confirm('¿Deseas cerrar sesión?')) {
+                        window.authSystem.logout();
+                        window.location.href = 'inicio.html';
+                    }
+                });
+            }
 
         });
 
     </script>
     
     <!-- PWA Service Worker Registration -->
-    <script src="../assets/js/pwa-register.js"></script>
+    <script src="../assets/js/pwa-register.js?v=2"></script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 
 </body>
 

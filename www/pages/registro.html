@@ -6,10 +6,11 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>Registro de Usuario - Contraloría Social Tamaulipas</title>
-
+    <title>Registro de Usuario - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
     <link rel="stylesheet" href="../assets/css/styles.css">
 
     <style>
@@ -24,13 +25,11 @@
 
             justify-content: center;
 
-            background: linear-gradient(135deg, #4D8143 30%, #ffffff 70%);
+            background: white;
 
             padding: 2rem;
 
         }
-
-        
 
         .auth-box {
 
@@ -48,8 +47,6 @@
 
         }
 
-        
-
         .auth-title {
 
             font-size: 2rem;
@@ -62,8 +59,6 @@
 
         }
 
-        
-
         .auth-subtitle {
 
             color: #666;
@@ -73,8 +68,6 @@
             margin-bottom: 2rem;
 
         }
-
-        
 
         .auth-form {
 
@@ -86,8 +79,6 @@
 
         }
 
-        
-
         .form-group {
 
             display: flex;
@@ -95,8 +86,6 @@
             flex-direction: column;
 
         }
-
-        
 
         .form-group label {
 
@@ -107,8 +96,6 @@
             color: #333;
 
         }
-
-        
 
         .form-group input {
 
@@ -124,8 +111,6 @@
 
         }
 
-        
-
         .form-group input:focus {
 
             outline: none;
@@ -133,8 +118,6 @@
             border-color: #2c7a7b;
 
         }
-
-        
 
         .btn-submit {
 
@@ -160,15 +143,11 @@
 
         }
 
-        
-
         .btn-submit:hover {
 
             background: #1a5f5f;
 
         }
-
-        
 
         .auth-link {
 
@@ -180,8 +159,6 @@
 
         }
 
-        
-
         .auth-link a {
 
             color: #2c7a7b;
@@ -192,15 +169,11 @@
 
         }
 
-        
-
         .auth-link a:hover {
 
             text-decoration: underline;
 
         }
-
-        
 
         .error-message {
 
@@ -218,15 +191,11 @@
 
         }
 
-        
-
         .error-message.show {
 
             display: block;
 
         }
-
-        
 
         .success-message {
 
@@ -243,8 +212,6 @@
             display: none;
 
         }
-
-        
 
         .success-message.show {
 
@@ -303,13 +270,9 @@
 
             <p class="auth-subtitle">Regístrate para comenzar a registrar evidencia</p>
 
-            
-
             <div id="errorMessage" class="error-message"></div>
 
             <div id="successMessage" class="success-message"></div>
-
-            
 
             <form id="registerForm" class="auth-form">
 
@@ -323,8 +286,6 @@
 
                 </div>
 
-                
-
                 <div class="form-group">
 
                     <label for="apodo">Apodo (Público)</label>
@@ -335,8 +296,6 @@
 
                 </div>
 
-                
-
                 <div class="form-group">
 
                     <label for="email">Correo Electrónico</label>
@@ -344,8 +303,6 @@
                     <input type="email" id="email" name="email" required autocomplete="email">
 
                 </div>
-
-                
 
                 <div class="form-group">
 
@@ -362,8 +319,6 @@
 
                 </div>
 
-                
-
                 <div class="form-group">
 
                     <label for="confirmPassword">Confirmar Contraseña</label>
@@ -377,13 +332,9 @@
 
                 </div>
 
-                
-
                 <button type="submit" class="btn-submit">Registrarse</button>
 
             </form>
-
-            
 
             <div class="auth-link">
 
@@ -394,8 +345,6 @@
         </div>
 
     </div>
-
-    
 
     <script src="../assets/js/auth.js"></script>
 
@@ -421,8 +370,6 @@
 
             e.preventDefault();
 
-            
-
             const nombre = document.getElementById('nombre').value.trim();
 
             const apodo = document.getElementById('apodo').value.trim();
@@ -433,19 +380,13 @@
 
             const confirmPassword = document.getElementById('confirmPassword').value;
 
-            
-
             const errorDiv = document.getElementById('errorMessage');
 
             const successDiv = document.getElementById('successMessage');
 
-            
-
             errorDiv.classList.remove('show');
 
             successDiv.classList.remove('show');
-
-            
 
             // Validaciones
 
@@ -459,8 +400,6 @@
 
             }
 
-            
-
             if (!apodo || apodo.length === 0) {
 
                 errorDiv.textContent = 'El apodo es requerido';
@@ -470,8 +409,6 @@
                 return;
 
             }
-
-            
 
             if (password.length < 6) {
 
@@ -483,8 +420,6 @@
 
             }
 
-            
-
             if (password !== confirmPassword) {
 
                 errorDiv.textContent = 'Las contraseñas no coinciden';
@@ -495,8 +430,6 @@
 
             }
 
-            
-
             // Deshabilitar botón mientras se procesa
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -504,8 +437,6 @@
             submitBtn.disabled = true;
 
             submitBtn.textContent = 'Registrando...';
-
-            
 
             window.authSystem.register(nombre, apodo, email, password).then(result => {
 
@@ -525,7 +456,7 @@
                         mensajeError = '🚫 CONTENIDO RECHAZADO\n\n';
                         mensajeError += result.message + '\n\n';
                         mensajeError += 'Campos afectados: ' + (result.campos_afectados ? result.campos_afectados.join(', ') : 'N/A') + '\n\n';
-                        mensajeError += '✅ La IA funciona correctamente. El contenido ofensivo fue detectado y rechazado.';
+                        mensajeError += '✅ El filtro de contenido detectó y rechazó este texto.';
                     }
                     
                     alert(mensajeError);
@@ -569,6 +500,9 @@
         }
 
     </script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 
 </body>
 

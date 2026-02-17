@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Registro - Contraloría Social Tamaulipas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Nuevo Registro - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#4D8143">
@@ -15,12 +17,55 @@
     <link rel="apple-touch-icon" href="../assets/icons/icon-152x152.png">
     
     <link rel="stylesheet" href="../assets/css/styles.css">
+    <style>
+        .field-label-wrap { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .field-info-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 1.1rem; height: 1.1rem; border-radius: 50%;
+            background: #4D8143; color: #fff; font-size: 0.7rem; font-weight: bold;
+            cursor: pointer; user-select: none; flex-shrink: 0;
+        }
+        .field-info-icon:hover { background: #3d6b35; }
+        .field-info-popover {
+            display: none; position: fixed; z-index: 10000;
+            max-width: 280px; padding: 0.75rem 1rem; border-radius: 8px;
+            background: #1a1a1a; color: #fff; font-size: 0.9rem; line-height: 1.4;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .field-info-popover.visible { display: block; }
+        .field-info-popover-text { margin-bottom: 0.5rem; }
+        .field-info-audio-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #4D8143; color: #fff; border: none;
+            font-size: 1rem; cursor: pointer; margin-top: 4px;
+        }
+        .field-info-audio-btn:hover { background: #3d6b35; }
+        .field-info-audio-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="anonymous"
     />
+    <!-- VERIFICACIÓN INMEDIATA EN HEAD - ANTES DE CUALQUIER SCRIPT -->
+    <script>
+        // Verificar INMEDIATAMENTE si viene del panel de administración
+        // Esto se ejecuta ANTES de que se carguen los scripts de autenticación
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isEditMode = urlParams.get('edit') === 'true';
+            const editingFromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
+            
+            if (isEditMode || editingFromAdmin) {
+
+                // Marcar en window para que el script de verificación lo detecte
+                window._editingFromAdmin = true;
+                window._skipAuthCheck = true; // Marcar para saltar verificación de auth.js
+            }
+        })();
+    </script>
     <script
         src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -28,6 +73,85 @@
     ></script>
 </head>
 <body>
+    <!-- Limpiar modo edición si la URL no tiene edit=true (así "+ Nuevo Registro" no abre el registro anterior) -->
+    <script>
+    (function() {
+        var q = window.location.search || '';
+        if (q.indexOf('edit=true') === -1) {
+            try { sessionStorage.removeItem('editingRecord'); sessionStorage.removeItem('editingFromAdmin'); } catch (e) {}
+        }
+    })();
+    </script>
+    <!-- Cargar categorías y subcategorías aunque form-script.js falle o esté en caché -->
+    <script>
+    (function() {
+        function apiUrl(action) {
+            var h = window.location.href.toLowerCase();
+            if (h.indexOf('organicjournal.com.mx') !== -1 || h.indexOf('hostinger') !== -1) return '/api/api.php?action=' + action;
+            var p = window.location.pathname || '';
+            return (p.indexOf('/pages/') !== -1 ? '../api/api.php' : 'api/api.php') + '?action=' + action;
+        }
+        function cargarCats() {
+            var sel = document.getElementById('categoria');
+            if (!sel) return;
+            fetch(apiUrl('get_categorias')).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success && d.categorias && d.categorias.length) {
+                    sel.innerHTML = '<option value="">Selecciona una categoría</option>';
+                    d.categorias.forEach(function(c) {
+                        var o = document.createElement('option');
+                        o.value = c.id;
+                        o.textContent = c.nombre;
+                        sel.appendChild(o);
+                    });
+                }
+            }).catch(function() {});
+        }
+        function cargarSubs(catId) {
+            var sel = document.getElementById('subcategoria');
+            if (!sel || !catId) return;
+            fetch(apiUrl('get_subcategorias') + '&categoria_id=' + catId).then(function(r) { return r.json(); }).then(function(d) {
+                sel.innerHTML = '<option value="">Selecciona una subcategoría (opcional)</option>';
+                if (d.success && d.subcategorias) d.subcategorias.forEach(function(s) {
+                    var o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.nombre;
+                    sel.appendChild(o);
+                });
+            }).catch(function() {});
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarCats();
+            var cat = document.getElementById('categoria');
+            if (cat) cat.addEventListener('change', function() {
+                var id = this.value;
+                if (id) cargarSubs(id); else { var s = document.getElementById('subcategoria'); if (s) s.innerHTML = '<option value="">Selecciona primero una categoría</option>'; }
+            });
+            // Botón cerrar (✕) y Cancelar: redirigir aunque form-script.js falle
+            function irAtras() {
+                if (window.confirm('¿Deseas cancelar? Los cambios no guardados se perderán.')) {
+                    var fromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
+                    sessionStorage.removeItem('editingRecord');
+                    sessionStorage.removeItem('editingFromAdmin');
+                    window.location.href = fromAdmin ? 'admin.html#registros' : 'index.html';
+                }
+            }
+            var closeBtn = document.getElementById('closeBtn');
+            if (closeBtn) closeBtn.addEventListener('click', irAtras);
+            var cancelBtn = document.getElementById('cancelBtn');
+            if (cancelBtn) cancelBtn.addEventListener('click', irAtras);
+            // Respaldo: botones de ubicación y evidencia (por si form-script.js tarda o falla)
+            var selectLocationBtn = document.getElementById('selectLocationBtn');
+            if (selectLocationBtn && typeof openLocationModal === 'function') {
+                selectLocationBtn.addEventListener('click', function() { openLocationModal(); });
+            }
+            var uploadBtn = document.getElementById('uploadBtn');
+            var mediaInput = document.getElementById('mediaInput');
+            if (uploadBtn && mediaInput) {
+                uploadBtn.addEventListener('click', function() { mediaInput.click(); });
+            }
+        });
+    })();
+    </script>
     <!-- Form Container -->
     <div class="form-container">
         <div class="form-header">
@@ -38,14 +162,14 @@
         <form id="newRecordForm" class="record-form">
             <!-- Categoría y Subcategoría -->
             <div class="form-group">
-                <label for="categoria">Categoría *</label>
+                <label for="categoria"><span class="field-label-wrap">Categoría * <span class="field-info-icon" data-field="categoria" title="Ayuda">i</span></span></label>
                 <select id="categoria" name="categoria" required>
                     <option value="">Selecciona una categoría</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="subcategoria">Subcategoría</label>
+                <label for="subcategoria"><span class="field-label-wrap">Subcategoría <span class="field-info-icon" data-field="subcategoria" title="Ayuda">i</span></span></label>
                 <select id="subcategoria" name="subcategoria">
                     <option value="">Selecciona primero una categoría</option>
                 </select>
@@ -54,11 +178,11 @@
             <!-- Fecha y Hora -->
             <div class="form-group" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
                 <div>
-                    <label for="fecha">Fecha *</label>
+                    <label for="fecha"><span class="field-label-wrap">Fecha * <span class="field-info-icon" data-field="fecha" title="Ayuda">i</span></span></label>
                     <input type="date" id="fecha" name="fecha" required>
                 </div>
                 <div>
-                    <label for="hora">Hora</label>
+                    <label for="hora"><span class="field-label-wrap">Hora <span class="field-info-icon" data-field="hora" title="Ayuda">i</span></span></label>
                     <input type="time" id="hora" name="hora">
                 </div>
             </div>
@@ -66,11 +190,11 @@
             <!-- Responsable y Brigada -->
             <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div>
-                    <label for="responsable">Responsable</label>
+                    <label for="responsable"><span class="field-label-wrap">Responsable <span class="field-info-icon" data-field="responsable" title="Ayuda">i</span></span></label>
                     <input type="text" id="responsable" name="responsable" placeholder="Nombre del responsable">
                 </div>
                 <div>
-                    <label for="brigada">Brigada</label>
+                    <label for="brigada"><span class="field-label-wrap">Brigada <span class="field-info-icon" data-field="brigada" title="Ayuda">i</span></span></label>
                     <input type="text" id="brigada" name="brigada" placeholder="Nombre de la brigada">
                 </div>
             </div>
@@ -78,24 +202,24 @@
             <!-- Comunidad y Sitio -->
             <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div>
-                    <label for="comunidad">Comunidad</label>
+                    <label for="comunidad"><span class="field-label-wrap">Comunidad <span class="field-info-icon" data-field="comunidad" title="Ayuda">i</span></span></label>
                     <input type="text" id="comunidad" name="comunidad" placeholder="Nombre de la comunidad">
                 </div>
                 <div>
-                    <label for="sitio">Sitio</label>
+                    <label for="sitio"><span class="field-label-wrap">Sitio <span class="field-info-icon" data-field="sitio" title="Ayuda">i</span></span></label>
                     <input type="text" id="sitio" name="sitio" placeholder="Nombre del sitio">
                 </div>
             </div>
 
             <!-- Tipo de Actividad -->
             <div class="form-group">
-                <label for="tipo_actividad">Tipo de Actividad</label>
+                <label for="tipo_actividad"><span class="field-label-wrap">Tipo de Actividad <span class="field-info-icon" data-field="tipo_actividad" title="Ayuda">i</span></span></label>
                 <input type="text" id="tipo_actividad" name="tipo_actividad" placeholder="Ej: Patrullaje rutinario, Limpieza comunitaria">
             </div>
 
             <!-- Descripción Breve -->
             <div class="form-group">
-                <label for="descripcion_breve">Descripción Breve</label>
+                <label for="descripcion_breve"><span class="field-label-wrap">Descripción Breve <span class="field-info-icon" data-field="descripcion_breve" title="Ayuda">i</span></span></label>
                 <textarea id="descripcion_breve" name="descripcion_breve" rows="2" placeholder="Descripción corta de la actividad"></textarea>
             </div>
 
@@ -174,6 +298,9 @@
         </form>
     </div>
 
+    <!-- Popover de ayuda por campo -->
+    <div id="fieldInfoPopover" class="field-info-popover" role="tooltip"></div>
+
     <!-- Modal de Selección de Ubicación -->
     <div id="locationModal" class="modal">
         <div class="modal-content location-modal">
@@ -204,11 +331,89 @@
         </div>
     </div>
 
+    <!-- VERIFICACIÓN INMEDIATA ANTES DE CUALQUIER SCRIPT -->
+    <script>
+        // Verificar INMEDIATAMENTE si viene del panel de administración
+        // Esto se ejecuta ANTES de que se carguen los scripts de autenticación
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isEditMode = urlParams.get('edit') === 'true';
+            const editingFromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true';
+
+            if (isEditMode || editingFromAdmin) {
+
+                // Marcar en window para que el script de verificación lo detecte
+                window._editingFromAdmin = true;
+                window._skipAuthCheck = true;
+                window._skipUserCheck = true;
+                
+                // SOBRESCRIBIR confirm para prevenir que se ejecute el modal de cuenta
+                window._originalConfirm = window.confirm;
+                window.confirm = function(message) {
+                    if (message && (message.includes('cuenta registrada') || message.includes('Ya tienes una cuenta'))) {
+
+                        return false; // Retornar false para cancelar y evitar redirección
+                    }
+                    // Para otros confirms, usar el original
+                    return window._originalConfirm.call(window, message);
+                };
+
+            }
+        })();
+    </script>
+    
     <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/admin-auth.js"></script>
     <script>
-        // Verificar autenticación antes de permitir registrar
-        document.addEventListener('DOMContentLoaded', () => {
+        // ESTABLECER FLAG ANTES DE CUALQUIER COSA
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const editingRecord = sessionStorage.getItem('editingRecord');
+            if (urlParams.get('edit') === 'true' || editingRecord) {
+
+                window._isPopulatingForm = true;
+            }
+        })();
+        
+        // Verificar autenticación después de que los scripts se carguen
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar si viene del panel de administración
+            const urlParams = new URLSearchParams(window.location.search);
+            const isEditMode = urlParams.get('edit') === 'true';
+            const editingFromAdmin = sessionStorage.getItem('editingFromAdmin') === 'true' || window._editingFromAdmin === true;
+
+            // PRIORIDAD MÁXIMA: Si viene del panel de administración, permitir acceso inmediatamente
+            if (isEditMode || editingFromAdmin) {
+
+                return; // Salir inmediatamente sin verificar nada más
+            }
+            
+            // Esperar un momento para que adminAuthSystem se cargue completamente
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // IMPORTANTE: Verificar primero si es administrador (para casos normales también)
+            let isAdmin = false;
+            if (window.adminAuthSystem && typeof window.adminAuthSystem.isAuthenticated === 'function') {
+                isAdmin = window.adminAuthSystem.isAuthenticated();
+
+            }
+            
+            if (isAdmin) {
+
+                return; // Permitir acceso si es administrador
+            }
+            
+            // VERIFICAR NUEVAMENTE si viene del panel admin (por si acaso)
+            const urlParamsCheck = new URLSearchParams(window.location.search);
+            const isEditModeCheck = urlParamsCheck.get('edit') === 'true';
+            const editingFromAdminCheck = sessionStorage.getItem('editingFromAdmin') === 'true' || window._editingFromAdmin === true;
+            
+            if (isEditModeCheck || editingFromAdminCheck) {
+
+                return; // Salir inmediatamente sin mostrar modal
+            }
+            
+            // Si no es administrador, verificar usuario normal
             const currentUser = window.authSystem ? window.authSystem.getCurrentUser() : null;
             
             if (!currentUser) {
@@ -225,9 +430,70 @@
             }
         });
     </script>
-    <script src="../assets/js/form-script.js?v=4"></script>
+    <script src="../assets/js/form-script.js?v=5"></script>
+    <script>
+        (function() {
+            // Ruta del audio de ayuda: pega aquí la ruta a tu archivo .mp3 (ej: '../assets/audio/ayuda.mp3')
+            var AUDIO_AYUDA_URL = '';
+
+            var descripciones = {
+                categoria: 'Tipo principal de la actividad o monitoreo (ej. Flora, Fauna, Reforestación). Elige la que mejor describa tu registro.',
+                subcategoria: 'Detalle específico dentro de la categoría elegida. Se habilita después de seleccionar una categoría (opcional).',
+                fecha: 'Día en que se realizó la actividad. Es un campo obligatorio.',
+                hora: 'Hora aproximada en que ocurrió la actividad (opcional).',
+                responsable: 'Nombre de la persona a cargo de la actividad o del registro.',
+                brigada: 'Nombre del equipo o brigada que realizó la actividad (ej. Brigada Norte, Equipo de monitoreo).',
+                comunidad: 'Localidad o comunidad donde se realizó la actividad (ej. nombre del ejido o población).',
+                sitio: 'Lugar específico o punto del área: paraje, predio, nombre del sitio o referencia.',
+                tipo_actividad: 'Qué se hizo: por ejemplo patrullaje rutinario, limpieza comunitaria, monitoreo de fauna, reforestación.',
+                descripcion_breve: 'Resumen corto de la actividad realizada. Sirve para identificar rápido el registro.'
+            };
+            document.addEventListener('DOMContentLoaded', function() {
+                var popover = document.getElementById('fieldInfoPopover');
+                if (!popover) return;
+                function cerrarPopover() {
+                    popover.classList.remove('visible');
+                    document.removeEventListener('click', cerrarPopover);
+                }
+                function escucharAyuda(e) {
+                    e.stopPropagation();
+                    if (!AUDIO_AYUDA_URL) return;
+                    var audio = new Audio(AUDIO_AYUDA_URL);
+                    audio.play().catch(function() {});
+                }
+                document.querySelectorAll('.field-info-icon').forEach(function(icon) {
+                    icon.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var field = this.getAttribute('data-field');
+                        var text = descripciones[field] || '';
+                        if (!text) return;
+                        if (popover.classList.contains('visible')) {
+                            cerrarPopover();
+                            return;
+                        }
+                        popover.innerHTML =
+                            '<div class="field-info-popover-text">' + text + '</div>' +
+                            '<button type="button" class="field-info-audio-btn" title="Escuchar">&#128266;</button>';
+                        var btn = popover.querySelector('.field-info-audio-btn');
+                        if (btn) {
+                            btn.addEventListener('click', escucharAyuda);
+                            if (!AUDIO_AYUDA_URL) btn.disabled = true;
+                        }
+                        popover.classList.add('visible');
+                        var rect = this.getBoundingClientRect();
+                        popover.style.left = rect.left + 'px';
+                        popover.style.top = (rect.bottom + 6) + 'px';
+                        setTimeout(function() { document.addEventListener('click', cerrarPopover); }, 0);
+                    });
+                });
+            });
+        })();
+    </script>
     <!-- PWA Service Worker Registration -->
-    <script src="../assets/js/pwa-register.js"></script>
+    <script src="../assets/js/pwa-register.js?v=2"></script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 </body>
 </html>
 

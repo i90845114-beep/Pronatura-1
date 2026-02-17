@@ -2,16 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta http-equiv="refresh" content="0; url=pages/inicio.html">
-    <title>Redirigiendo...</title>
+    <title>Organic Journal - Redirigiendo</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="assets/logo.jpg">
     <script>
         // Limpiar sesión ANTES de redirigir para asegurar que inicio.html siempre aparezca sin sesión
         try {
             sessionStorage.removeItem('current_session');
             localStorage.removeItem('current_session');
-            console.log('🧹 Sesión limpiada en index.html antes de redirigir');
+
         } catch (error) {
-            console.error('❌ Error al limpiar sesión:', error);
+
         }
         
         // Redirección inmediata a la página de inicio

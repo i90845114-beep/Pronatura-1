@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración - Contraloría Social Tamaulipas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Panel de Administración - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
@@ -43,61 +45,76 @@
         .password-toggle:focus {
             outline: none;
         }
+        /* Forzar perfil a la derecha (gana sobre cualquier otro CSS) */
+        body .header.teal-header { display: flex !important; align-items: center !important; }
+        body .header.teal-header .header-content { display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; flex: 1 !important; min-width: 0 !important; }
+        body .header.teal-header .profile-dropdown-wrapper { flex-shrink: 0 !important; margin-left: auto !important; }
+        /* Menú perfil: oculto por defecto; al abrir se posiciona con JS a la derecha */
+        .profile-dropdown-wrapper { position: relative !important; overflow: visible !important; }
+        #adminProfileDropdown:not(.is-open) { display: none !important; opacity: 0; visibility: hidden; }
+        #adminProfileDropdown.is-open { display: block !important; opacity: 1; visibility: visible; }
+        div#adminProfileDropdown.profile-dropdown {
+            position: absolute !important; top: 100% !important; left: auto !important; right: 0 !important;
+            margin-top: 0.5rem !important; width: 240px !important; z-index: 999999 !important;
+        }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <h1 class="header-title">Panel de Administración</h1>
-            <div class="header-actions">
-                <span class="user-name" id="userName">Cargando...</span>
-                <button class="btn-header btn-back" onclick="window.location.href='index.html'" title="Volver a la biblioteca de registros">
-                    <span class="btn-icon">📚</span>
-                    <span>Biblioteca</span>
+    <!-- Header: perfil forzado a la derecha con estilos inline para que siempre se vea -->
+    <header class="header teal-header" style="display: flex; align-items: center;">
+        <div class="header-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex: 1; min-width: 0;">
+            <h1 class="header-title" style="margin: 0; flex: 1 1 auto; min-width: 0;">Panel de Administración</h1>
+            <div class="profile-dropdown-wrapper" id="adminProfileWrap" style="flex-shrink: 0; margin-left: auto;">
+                <button type="button" class="profile-trigger" id="adminProfileTrigger" aria-expanded="false" aria-haspopup="true" aria-label="Abrir menú de cuenta" title="Menú de cuenta">
+                    <span class="profile-avatar" style="width:22px;height:22px;min-width:22px;min-height:22px;max-width:22px;max-height:22px;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%"><img src="../assets/icons/perfil-removebg-preview.png" alt="" style="width:100%;height:100%;max-width:22px;max-height:22px;object-fit:cover;display:block"></span>
+                    <span class="user-name" id="userName">Cargando...</span>
+                    <span class="profile-chevron" aria-hidden="true">▼</span>
                 </button>
-                <button class="btn-header btn-logout-admin" onclick="adminLogout()" title="Cerrar sesión de administrador">
-                    <span class="btn-icon">🚪</span>
-                    <span>Salir</span>
-                </button>
+                <div class="profile-dropdown" id="adminProfileDropdown" role="menu">
+                    <div class="profile-dropdown-links" style="display: flex !important; flex-direction: column !important; gap: 0.5rem !important; padding: 0.75rem !important;">
+                        <a href="index.html" class="profile-dropdown-link" role="menuitem"><span class="profile-dropdown-icon">📚</span> Biblioteca</a>
+                        <button type="button" class="profile-dropdown-item logout" onclick="adminLogout()" role="menuitem"><span class="profile-dropdown-icon">🚪</span> Salir</button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Navigation Tabs -->
     <nav class="admin-nav">
-        <button class="nav-tab active" data-tab="dashboard">
+        <button class="nav-tab active" data-tab="dashboard" onclick="if(typeof handleTabClick === 'function') handleTabClick('dashboard'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('dashboard'); else  return false;">
             <span class="nav-icon">📊</span>
             Dashboard
         </button>
-        <button class="nav-tab" data-tab="usuarios">
+        <button class="nav-tab" data-tab="usuarios" onclick="if(typeof handleTabClick === 'function') handleTabClick('usuarios'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('usuarios'); else  return false;">
             <span class="nav-icon">👥</span>
             Usuarios
         </button>
-        <button class="nav-tab" data-tab="registros">
+        <button class="nav-tab" data-tab="registros" onclick="if(typeof handleTabClick === 'function') handleTabClick('registros'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('registros'); else  return false;">
             <span class="nav-icon">📚</span>
             Todos los Registros
         </button>
-        <button class="nav-tab" data-tab="categorias">
+        <button class="nav-tab" data-tab="categorias" onclick="if(typeof handleTabClick === 'function') handleTabClick('categorias'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('categorias'); else  return false;">
             <span class="nav-icon">📁</span>
             Categorías
         </button>
-        <button class="nav-tab" data-tab="comentarios">
+        <button class="nav-tab" data-tab="comentarios" onclick="if(typeof handleTabClick === 'function') handleTabClick('comentarios'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('comentarios'); else  return false;">
             <span class="nav-icon">💬</span>
             Comentarios
         </button>
-        <button class="nav-tab" data-tab="ia-autonoma">
-            <span class="nav-icon">🤖</span>
-            IA Autónoma
-        </button>
-        <button class="nav-tab" data-tab="intentos-ofensivos">
+        <button class="nav-tab" data-tab="intentos-ofensivos" onclick="if(typeof handleTabClick === 'function') handleTabClick('intentos-ofensivos'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('intentos-ofensivos'); else  return false;">
             <span class="nav-icon">🚫</span>
             Intentos Ofensivos
         </button>
-        <button class="nav-tab" data-tab="apelaciones">
+        <button class="nav-tab" data-tab="apelaciones" onclick="if(typeof handleTabClick === 'function') handleTabClick('apelaciones'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('apelaciones'); else  return false;">
             <span class="nav-icon">📋</span>
             Apelaciones
             <span class="badge-pending" id="apelacionesBadge" style="display: none;">0</span>
+        </button>
+        <button class="nav-tab" data-tab="solicitudes-grupos" onclick="if(typeof handleTabClick === 'function') handleTabClick('solicitudes-grupos'); else if(typeof window.handleTabClick === 'function') window.handleTabClick('solicitudes-grupos'); else  return false;">
+            <span class="nav-icon">🔔</span>
+            Solicitudes de Grupos
+            <span class="badge-pending" id="solicitudesGruposBadge" style="display: none;">0</span>
         </button>
     </nav>
 
@@ -136,20 +153,15 @@
                     </div>
                 </div>
             </div>
-            <div style="margin: 2rem 0; text-align: right; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <button id="btnPreviewCharts" class="btn-secondary" style="padding: 0.9rem 2rem; font-size: 1rem; border-radius: 8px; background: linear-gradient(135deg, #805ad5 0%, #9f7aea 100%); color: white; border: none; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(128, 90, 213, 0.3); transition: all 0.3s ease;">
-                    📊 Ver Gráficas con Datos de Ejemplo
-                </button>
-            </div>
-            <div class="charts-container">
-                <div class="chart-card">
-                    <h3>Registros por Categoría</h3>
-                    <div id="chartCategorias" class="chart-placeholder">Cargando gráfico...</div>
+            <div style="margin: 2rem 0; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #c53030;">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.15rem; color: #2d3748;">Últimos 10 intentos de contenido ofensivo</h3>
+                <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #718096;">Detección automática de lenguaje ofensivo o inapropiado.</p>
+                <div id="dashboardUltimosIntentosOfensivos" class="ultimos-intentos-list">
+                    <p style="color: #718096; margin: 0;">Cargando...</p>
                 </div>
-                <div class="chart-card">
-                    <h3>Registros por Mes</h3>
-                    <div id="chartMeses" class="chart-placeholder">Cargando gráfico...</div>
-                </div>
+                <p style="margin: 1rem 0 0 0; font-size: 0.9rem;">
+                    <button type="button" class="btn-link" onclick="if(typeof handleTabClick === 'function') handleTabClick('intentos-ofensivos');" style="background: none; border: none; color: #c53030; cursor: pointer; font-weight: 600; padding: 0;">Ver todos en Intentos ofensivos →</button>
+                </p>
             </div>
         </section>
 
@@ -157,7 +169,9 @@
         <section id="usuarios" class="admin-section">
             <div class="section-header">
                 <h2>Gestión de Usuarios</h2>
-                <button class="btn-primary" onclick="showAddUserModal()">+ Nuevo Usuario</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-primary" onclick="showAddUserModal()">+ Nuevo Usuario</button>
+                </div>
             </div>
             <div class="filters-bar">
                 <input type="text" id="searchUsers" placeholder="Buscar usuarios..." class="search-input">
@@ -244,67 +258,31 @@
             </div>
         </section>
 
-        <!-- IA Autónoma Tab -->
-        <section id="ia-autonoma" class="admin-section">
-            <div class="section-header">
-                <h2>🤖 IA Autónoma</h2>
-                <p style="color: #666; margin-top: 0.5rem;">La IA está analizando automáticamente a los usuarios y ejecutando acciones cuando es necesario.</p>
-            </div>
-            
-            <!-- Estado de la IA -->
-            <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1.5rem; margin-bottom: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                    <span style="font-size: 2rem;">✅</span>
-                    <div>
-                        <h3 style="margin: 0; color: #2e7d32; font-weight: 600;">IA ACTIVA</h3>
-                        <p style="margin: 0.5rem 0 0 0; color: #2e7d32; font-size: 0.95rem;">
-                            La IA está revisando automáticamente a los usuarios cada 5 minutos y ejecutando acciones cuando detecta problemas.
-                        </p>
-                    </div>
-                </div>
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #c8e6c9;">
-                    <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">
-                        <strong>Última revisión:</strong> <span id="ultimaRevisionIA" style="font-weight: 600;">Cargando...</span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Panel de Control -->
-            <div style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <div style="margin-bottom: 1rem;">
-                    <button id="btnLimpiarNotificaciones" class="btn-secondary" style="padding: 1rem 2rem; font-size: 1rem;">
-                        🗑️ Limpiar Notificaciones
-                    </button>
-                </div>
-            </div>
-
-            <!-- Panel de Notificaciones de IA -->
-            <div style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <h3 style="margin-top: 0; color: #4D8143;">📢 Notificaciones de Acciones Propuestas</h3>
-                <div id="iaNotificaciones" style="max-height: 500px; overflow-y: auto;">
-                    <div style="text-align: center; padding: 2rem; color: #999;">
-                        <p>No hay acciones propuestas aún.</p>
-                        <p style="font-size: 0.9rem;">La IA está analizando automáticamente. Las acciones aparecerán aquí cuando se detecten problemas.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Log de Acciones Automáticas -->
-            <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <h3 style="margin-top: 0; color: #4D8143;">📋 Historial de Acciones Automáticas</h3>
-                <div id="iaHistorial" style="max-height: 400px; overflow-y: auto;">
-                    <div style="text-align: center; padding: 2rem; color: #999;">
-                        <p>No hay acciones ejecutadas aún.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- Intentos Ofensivos Tab -->
         <section id="intentos-ofensivos" class="admin-section">
             <div class="section-header">
                 <h2>🚫 Intentos de Contenido Ofensivo</h2>
                 <p style="color: #666; margin-top: 0.5rem;">Registro de todos los intentos de publicar contenido ofensivo o obsceno.</p>
+            </div>
+
+            <!-- Apartado Bot: todos los intentos de contenido ofensivo -->
+            <div class="ia-ultimos-ofensivos" style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #c53030;">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.15rem; color: #2d3748;">🤖 Bot – Intentos de contenido ofensivo</h3>
+                <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #718096;">Detección automática de lenguaje ofensivo o inapropiado (registro, publicaciones, etc.).</p>
+                <div id="iaUltimosIntentosOfensivos" class="ultimos-intentos-list">
+                    <p style="color: #718096; margin: 0;">Cargando...</p>
+                </div>
+                <div id="paginacionIaIntentos" style="margin-top: 1rem; display: none; text-align: center; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: center;">
+                    <button type="button" id="btnAnteriorIaIntentos" class="btn-secondary" style="padding: 0.5rem 1rem;">← Anterior</button>
+                    <span id="infoPaginacionIaIntentos" style="margin: 0 0.5rem; font-size: 0.9rem; color: #4a5568;"></span>
+                    <button type="button" id="btnSiguienteIaIntentos" class="btn-secondary" style="padding: 0.5rem 1rem;">Siguiente →</button>
+                </div>
+                <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #2d3748;">📋 Recomendaciones y acciones del Bot</h4>
+                <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #718096;">El bot analiza los intentos ofensivos y recomienda sanciones (advertencias, bans). Aplica la sanción recomendada o deja que el bot la ejecute automáticamente.</p>
+                <div id="botRecomendaciones" class="bot-recomendaciones-list">
+                    <p style="color: #718096; margin: 0;">Cargando recomendaciones...</p>
+                </div>
             </div>
             
             <!-- Filtros -->
@@ -326,7 +304,7 @@
                         </select>
                     </div>
                     <div style="display: flex; align-items: flex-end;">
-                        <button id="btnCargarIntentos" class="btn-primary" onclick="console.log('🔘 [HTML onclick] Botón clickeado'); console.log('🔍 [HTML onclick] window.loadIntentosOfensivos:', typeof window.loadIntentosOfensivos); console.log('🔍 [HTML onclick] loadIntentosOfensivos:', typeof loadIntentosOfensivos); try { if(typeof window.loadIntentosOfensivos === 'function') { window.loadIntentosOfensivos(); } else if(typeof loadIntentosOfensivos === 'function') { loadIntentosOfensivos(); } else { throw new Error('Función no disponible'); } } catch(e) { console.error('❌ Error:', e); alert('Error: ' + e.message + '. Verifica la consola (F12) para más detalles.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem; width: 100%;">
+                        <button id="btnCargarIntentos" class="btn-primary" onclick="   try { if(typeof window.loadIntentosOfensivos === 'function') { window.loadIntentosOfensivos(); } else if(typeof loadIntentosOfensivos === 'function') { loadIntentosOfensivos(); } else { throw new Error('Función no disponible'); } } catch(e) {  alert('Error: ' + e.message + '. Verifica la consola (F12) para más detalles.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem; width: 100%;">
                             🔍 Cargar Intentos
                         </button>
                     </div>
@@ -385,7 +363,7 @@
                         </select>
                     </div>
                     <div style="display: flex; align-items: flex-end;">
-                        <button id="btnCargarApelaciones" class="btn-primary" onclick="loadApelaciones()" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                        <button id="btnCargarApelaciones" class="btn-primary" onclick="  try { if(typeof window.loadApelaciones === 'function') { window.loadApelaciones(); } else { throw new Error('Función loadApelaciones no disponible'); } } catch(e) {  alert('Error: ' + e.message + '. Verifica la consola (F12) para más detalles.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
                             🔍 Cargar Apelaciones
                         </button>
                     </div>
@@ -395,6 +373,83 @@
             <!-- Lista de Apelaciones -->
             <div id="apelacionesList" style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <p style="text-align: center; color: #999; padding: 2rem;">Haz clic en "Cargar Apelaciones" para ver las apelaciones pendientes.</p>
+            </div>
+        </section>
+
+        <!-- Solicitudes de Grupos Tab -->
+        <section id="solicitudes-grupos" class="admin-section">
+            <div class="section-header">
+                <h2>👥 Gestión de Grupos y Solicitudes</h2>
+                <p style="color: #666; margin-top: 0.5rem;">Gestiona los grupos de ejidos y las solicitudes de acceso de los usuarios.</p>
+            </div>
+            
+            <!-- Tabs internos -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 2px solid #e0e0e0;">
+                <button id="tabSolicitudes" class="sub-tab active" onclick="mostrarSubTabGrupos('solicitudes')" style="padding: 1rem 1.5rem; background: #4D8143; color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                    🔔 Solicitudes de Acceso
+                    <span class="badge-pending" id="solicitudesGruposBadgeSub" style="display: none; margin-left: 0.5rem; background: rgba(255,255,255,0.3); padding: 0.25rem 0.5rem; border-radius: 12px;">0</span>
+                </button>
+                <button id="tabGrupos" class="sub-tab" onclick="mostrarSubTabGrupos('grupos')" style="padding: 1rem 1.5rem; background: #e0e0e0; color: #666; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                    🏘️ Grupos
+                </button>
+            </div>
+            
+            <!-- Contenido de Solicitudes -->
+            <div id="contenidoSolicitudes" class="sub-tab-content">
+                <!-- Filtros -->
+                <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Estado</label>
+                            <select id="filterEstadoSolicitud" style="padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                <option value="">Todas</option>
+                                <option value="pendiente">Pendientes</option>
+                                <option value="aprobada">Aprobadas</option>
+                                <option value="rechazada">Rechazadas</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button id="btnCargarSolicitudes" class="btn-primary" onclick="if(typeof window.cargarSolicitudesGrupos === 'function') { window.cargarSolicitudesGrupos(); } else { alert('Función no disponible. Verifica que admin.js esté cargado.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                                🔍 Cargar Solicitudes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Solicitudes -->
+                <div id="solicitudesGruposList" style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <p style="text-align: center; color: #999; padding: 2rem;">Haz clic en "Cargar Solicitudes" para ver las solicitudes pendientes.</p>
+                </div>
+            </div>
+            
+            <!-- Contenido de Grupos -->
+            <div id="contenidoGrupos" class="sub-tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <p style="color: #666; margin: 0;">Gestiona todos los grupos de ejidos. Crea nuevos grupos, edita existentes y visualiza sus miembros.</p>
+                    <button class="btn-primary" onclick="abrirModalCrearGrupoAdmin()" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                        ➕ Crear Grupo
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Buscar</label>
+                            <input type="text" id="searchGruposAdmin" placeholder="Buscar por nombre..." style="padding: 0.75rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem; width: 300px;">
+                        </div>
+                        <div style="display: flex; align-items: flex-end; gap: 0.75rem;">
+                            <button id="btnCargarGruposAdmin" class="btn-primary" onclick="if(typeof window.cargarGruposAdmin === 'function') { window.cargarGruposAdmin(); } else { alert('Función no disponible. Verifica que admin.js esté cargado.'); } return false;" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                                🔍 Cargar Grupos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Grupos -->
+                <div id="gruposAdminList" style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <p style="text-align: center; color: #999; padding: 2rem;">Haz clic en "Cargar Grupos" para ver todos los grupos.</p>
+                </div>
             </div>
         </section>
     </main>
@@ -510,15 +565,6 @@
                     <label>Motivo <span style="color: #d32f2f;">*</span></label>
                     <textarea id="advertenciaMotivo" rows="4" required placeholder="Describe el motivo de la advertencia..."></textarea>
                 </div>
-                <div id="aiSuggestionAdvertencia" style="display: none; background: #f0f4ff; border-left: 4px solid #6366f1; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
-                    <div style="display: flex; align-items: start; gap: 0.5rem;">
-                        <span style="font-size: 1.2rem;">🤖</span>
-                        <div style="flex: 1;">
-                            <strong style="color: #6366f1;">Asistente IA:</strong>
-                            <div id="aiSuggestionAdvertenciaText" style="margin-top: 0.5rem; color: #333;"></div>
-                        </div>
-                    </div>
-                </div>
                 <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
                     <strong>ℹ️ Nota:</strong> Al llegar a 3 advertencias, se aplicará automáticamente un ban temporal de 7 días. Si el usuario ya tiene 2 bans temporales previos, se aplicará un ban permanente.
                 </div>
@@ -558,21 +604,12 @@
                     <label>Motivo <span style="color: #d32f2f;">*</span></label>
                     <textarea id="banMotivo" rows="4" required placeholder="Describe el motivo del ban..."></textarea>
                 </div>
-                <div id="aiSuggestionBan" style="display: none; background: #f0f4ff; border-left: 4px solid #6366f1; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
-                    <div style="display: flex; align-items: start; gap: 0.5rem;">
-                        <span style="font-size: 1.2rem;">🤖</span>
-                        <div style="flex: 1;">
-                            <strong style="color: #6366f1;">Asistente IA:</strong>
-                            <div id="aiSuggestionBanText" style="margin-top: 0.5rem; color: #333;"></div>
-                        </div>
-                    </div>
-                </div>
                 <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
                     <strong>⚠️ Nota:</strong> Si el usuario ya tiene 2 bans temporales previos y se intenta dar otro ban temporal, se convertirá automáticamente en ban permanente.
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('banModal')">Cancelar</button>
-                    <button type="submit" class="btn-primary">Aplicar Ban</button>
+                    <button type="button" class="btn-primary" onclick="if(typeof handleDarBan === 'function') { const e = new Event('submit'); e.preventDefault = () => {}; handleDarBan(e); } else { alert('Error: Función no disponible'); }">Aplicar Ban</button>
                 </div>
             </form>
         </div>
@@ -604,6 +641,54 @@
         </div>
     </div>
 
+    <!-- Modal Crear Grupo -->
+    <div id="crearGrupoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crear Nuevo Grupo</h3>
+                <button class="close-btn" onclick="closeModal('crearGrupoModal')">✕</button>
+            </div>
+            <form id="crearGrupoForm" class="modal-form" onsubmit="crearGrupoAdmin(event)">
+                <div class="form-group">
+                    <label>Nombre del Grupo <span style="color: #d32f2f;">*</span></label>
+                    <input type="text" id="nombreGrupoAdmin" required placeholder="Ej: Ejido San José">
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="descripcionGrupoAdmin" rows="3" placeholder="Describe el propósito del grupo..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Líder del Grupo <span style="color: #d32f2f;">*</span></label>
+                    <select id="liderGrupoAdmin" required>
+                        <option value="">-- Selecciona un usuario --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="estadoGrupoAdmin">
+                        <option value="">-- Selecciona un estado (opcional) --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Municipio</label>
+                    <select id="municipioGrupoAdmin" disabled>
+                        <option value="">-- Selecciona primero un estado --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ciudad</label>
+                    <select id="ciudadGrupoAdmin" disabled>
+                        <option value="">-- Selecciona primero un municipio --</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('crearGrupoModal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Crear Grupo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../assets/js/auth.js"></script>
     <script src="../assets/js/admin-auth.js"></script>
     <!-- Definir función ANTES de cargar admin.js para asegurar disponibilidad -->
@@ -615,10 +700,10 @@
         
         // Definir función DIRECTAMENTE en window ANTES de cargar admin.js
         window.loadIntentosOfensivos = async function() {
-            console.log('🔍 [HTML Inline] Función ejecutada desde script inline');
+
             const tbody = document.getElementById('intentosOfensivosTableBody');
             if (!tbody) {
-                console.error('❌ No se encontró tbody');
+
                 alert('Error: No se encontró la tabla.');
                 return;
             }
@@ -638,18 +723,13 @@
                 let url = `../api/api.php?action=get_intentos_ofensivos&token=${token}&limit=${window.limiteIntentos}&offset=${window.paginaIntentos * window.limiteIntentos}`;
                 if (tipoIntento) url += `&tipo_intento=${tipoIntento}`;
                 if (usuarioId) url += `&usuario_id=${usuarioId}`;
-                
-                console.log('🔍 [HTML Inline] URL:', url);
-                
+
                 const response = await fetch(url);
                 const data = await response.json();
-                
-                console.log('📊 [HTML Inline] Respuesta:', data);
-                
+
                 if (data.success) {
                     window.intentosOfensivos = data.intentos || [];
-                    console.log(`✅ Cargados ${window.intentosOfensivos.length} intentos`);
-                    
+
                     // Renderizar resultados
                     if (window.intentosOfensivos.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #999;">No hay intentos registrados</td></tr>';
@@ -763,125 +843,117 @@
                     tbody.innerHTML = `<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error: ${data.message}</td></tr>`;
                 }
             } catch (error) {
-                console.error('❌ Error:', error);
+
                 tbody.innerHTML = '<tr><td colspan="7" style="padding: 2rem; text-align: center; color: #d32f2f;">Error de conexión: ' + error.message + '</td></tr>';
             }
         };
-        
-        console.log('✅ [HTML Inline] Función loadIntentosOfensivos definida directamente en HTML');
-        console.log('✅ [HTML Inline] window.loadIntentosOfensivos:', typeof window.loadIntentosOfensivos);
-    </script>
-    <script src="../assets/js/admin.js"></script>
-    <!-- Script para asegurar que la última revisión se actualice y FORZAR ejecución del análisis -->
-    <script>
-        console.log('🔧 [HTML Script] ========== SCRIPT DE FALLBACK INICIADO ==========');
-        console.log('🔧 [HTML Script] Script de fallback ejecutándose...');
-        
-        // Función para verificar y ejecutar análisis
-        function verificarYEjecutarAnalisis() {
-            console.log('🔧 [HTML Script] Verificando funciones...');
-            const estado = {
-                iniciarIAAutonoma: typeof window.iniciarIAAutonoma,
-                analizarUsuariosConIA: typeof window.analizarUsuariosConIA,
-                adminAuthSystem: typeof window.adminAuthSystem,
-                adminAuthSystemDefinido: typeof window.adminAuthSystem !== 'undefined'
-            };
-            console.log('🔧 [HTML Script] Estado de funciones:', estado);
-            
-            if (window.adminAuthSystem) {
-                console.log('🔧 [HTML Script] adminAuthSystem encontrado, verificando autenticación...');
-                const isAuth = window.adminAuthSystem.isAuthenticated();
-                console.log('🔧 [HTML Script] isAuthenticated():', isAuth);
-                const token = window.adminAuthSystem.getToken();
-                console.log('🔧 [HTML Script] Token:', token ? 'SÍ (longitud: ' + token.length + ')' : 'NO');
-                
-                if (token && typeof window.analizarUsuariosConIA === 'function') {
-                    console.log('🚀 [HTML Script] ========== FORZANDO EJECUCIÓN DEL ANÁLISIS ==========');
-                    console.log('🚀 [HTML Script] Ejecutando window.analizarUsuariosConIA(true)...');
-                    window.analizarUsuariosConIA(true).then(() => {
-                        console.log('✅ [HTML Script] Análisis completado exitosamente desde HTML');
-                    }).catch(error => {
-                        console.error('❌ [HTML Script] Error al ejecutar análisis:', error);
-                        console.error('❌ [HTML Script] Mensaje:', error.message);
-                        console.error('❌ [HTML Script] Stack:', error.stack);
-                    });
-                } else {
-                    console.error('❌ [HTML Script] No se puede ejecutar análisis:', {
-                        tieneToken: !!token,
-                        tieneFuncion: typeof window.analizarUsuariosConIA === 'function'
-                    });
-                }
-            } else {
-                console.error('❌ [HTML Script] adminAuthSystem no está disponible');
-            }
-        }
-        
-        // Intentar múltiples veces con diferentes delays
-        console.log('🔧 [HTML Script] Programando verificaciones en 1s, 2s, 3s, 5s...');
-        setTimeout(() => {
-            console.log('🔧 [HTML Script] Intento 1 (1 segundo)...');
-            verificarYEjecutarAnalisis();
-        }, 1000);
-        
-        setTimeout(() => {
-            console.log('🔧 [HTML Script] Intento 2 (2 segundos)...');
-            verificarYEjecutarAnalisis();
-        }, 2000);
-        
-        setTimeout(() => {
-            console.log('🔧 [HTML Script] Intento 3 (3 segundos)...');
-            verificarYEjecutarAnalisis();
-        }, 3000);
-        
-        setTimeout(() => {
-            console.log('🔧 [HTML Script] Intento 4 (5 segundos)...');
-            verificarYEjecutarAnalisis();
-        }, 5000);
-    </script>
-    <script>
-        // Función para actualizar última revisión (fallback si admin.js no lo hace)
-        function actualizarUltimaRevisionFallback() {
-            const elemento = document.getElementById('ultimaRevisionIA');
-            if (elemento && elemento.textContent === 'Cargando...') {
-                const ahora = new Date();
-                const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const fecha = ahora.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                elemento.textContent = `${fecha} a las ${hora}`;
-                console.log('✅ [HTML Fallback] Última revisión actualizada:', `${fecha} a las ${hora}`);
-            }
-        }
-        
-        // Intentar actualizar después de que se cargue todo
-        setTimeout(() => {
-            actualizarUltimaRevisionFallback();
-            // Si existe la función de admin.js, también llamarla
-            if (typeof window.actualizarUltimaRevision === 'function') {
-                window.actualizarUltimaRevision();
-            }
-        }, 500);
-        
-        setTimeout(() => {
-            actualizarUltimaRevisionFallback();
-            if (typeof window.actualizarUltimaRevision === 'function') {
-                window.actualizarUltimaRevision();
-            }
-        }, 1500);
-        
-        // Observar cuando se hace clic en la pestaña de IA
-        document.addEventListener('DOMContentLoaded', () => {
-            const tabIA = document.querySelector('[data-tab="ia-autonoma"]');
-            if (tabIA) {
-                tabIA.addEventListener('click', () => {
-                    setTimeout(() => {
-                        actualizarUltimaRevisionFallback();
-                        if (typeof window.actualizarUltimaRevision === 'function') {
-                            window.actualizarUltimaRevision();
-                        }
-                    }, 200);
-                });
-            }
-        });
 
+    </script>
+    <!-- Cargar admin.js con detección de entorno -->
+    <script>
+        (function() {
+            var currentUrl = window.location.href.toLowerCase();
+            var isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                             currentUrl.indexOf('hostingersite.com') !== -1 ||
+                             currentUrl.indexOf('organicjournal.com.mx') !== -1;
+            
+            var script = document.createElement('script');
+            script.id = 'adminJsScript';
+            script.src = isHostinger ? '/assets/js/admin.js?v=' + Date.now() : '../assets/js/admin.js?v=' + Date.now();
+            
+            script.onload = function() {
+
+                // Esperar múltiples veces para asegurar que las funciones estén disponibles
+                var intentos = 0;
+                var maxIntentos = 10;
+                var intervalo = setInterval(function() {
+                    intentos++;
+                    
+                    if (typeof window.loadApelaciones === 'function') {
+                        clearInterval(intervalo);
+                        // Configurar botón después de confirmar que la función está disponible
+                        if (typeof configurarBotonApelaciones === 'function') {
+                            configurarBotonApelaciones();
+                        }
+                    } else if (intentos >= maxIntentos) {
+
+                        clearInterval(intervalo);
+                        // Definir función de emergencia
+                        window.loadApelaciones = async function() {
+                            alert('Error: La función no se cargó correctamente. Por favor, recarga la página (Ctrl+F5).');
+                        };
+                        if (typeof configurarBotonApelaciones === 'function') {
+                            configurarBotonApelaciones();
+                        }
+                    }
+                }, 200);
+            };
+            
+            script.onerror = function() {
+
+                alert('Error al cargar el script de administración. Por favor, recarga la página.');
+            };
+
+            document.head.appendChild(script);
+        })();
+    </script>
+    <!-- Script para asegurar que loadApelaciones esté disponible -->
+    <script>
+        // Función para configurar el event listener del botón
+        function configurarBotonApelaciones() {
+            const btnCargarApelaciones = document.getElementById('btnCargarApelaciones');
+            if (!btnCargarApelaciones) {
+
+                return;
+            }
+            
+            // Remover listeners anteriores si existen
+            const newBtn = btnCargarApelaciones.cloneNode(true);
+            btnCargarApelaciones.parentNode.replaceChild(newBtn, btnCargarApelaciones);
+            
+            // Agregar nuevo listener
+            document.getElementById('btnCargarApelaciones').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (typeof window.loadApelaciones === 'function') {
+
+                    window.loadApelaciones();
+                } else {
+
+                    alert('Error: La función de cargar apelaciones no está disponible. Por favor, recarga la página.');
+                }
+            });
+        }
+        
+        // Verificar cuando el script admin.js se carga
+        var adminJsScript = document.getElementById('adminJsScript');
+        if (adminJsScript) {
+            adminJsScript.onload = function() {
+                setTimeout(function() {
+                    configurarBotonApelaciones();
+                }, 300);
+            };
+            
+            // Si el script ya está cargado
+            if (adminJsScript.complete || adminJsScript.readyState === 'complete') {
+                setTimeout(function() {
+                    configurarBotonApelaciones();
+                }, 300);
+            }
+        }
+        
+        // También configurar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(configurarBotonApelaciones, 500);
+            });
+        } else {
+            setTimeout(configurarBotonApelaciones, 500);
+        }
+    </script>
+    <!-- Scripts de IA - DESACTIVADOS -->
+    <script>
         // Función para alternar visibilidad de contraseña
         function togglePassword(inputId, button) {
             var input = document.getElementById(inputId);
@@ -898,6 +970,46 @@
             }
         }
     </script>
+    
+    <!-- Menú de perfil: abrir/cerrar y posicionar debajo del botón para que se vea todo -->
+    <script>
+        (function() {
+            var trigger = document.getElementById('adminProfileTrigger');
+            var dropdown = document.getElementById('adminProfileDropdown');
+            var wrap = document.getElementById('adminProfileWrap');
+            var dropdownWidth = 240;
+            function positionDropdown() {
+                if (!trigger || !dropdown) return;
+                var rect = trigger.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.left = 'auto';
+                dropdown.style.right = '12px';
+                dropdown.style.top = (rect.bottom + 6) + 'px';
+                dropdown.style.width = Math.min(dropdownWidth, window.innerWidth - 24) + 'px';
+            }
+            if (trigger && dropdown && wrap) {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var isOpen = dropdown.classList.toggle('is-open');
+                    trigger.classList.toggle('is-open', isOpen);
+                    trigger.setAttribute('aria-expanded', isOpen);
+                    if (isOpen) positionDropdown();
+                });
+                document.addEventListener('click', function(e) {
+                    if (!wrap.contains(e.target)) {
+                        dropdown.classList.remove('is-open');
+                        trigger.classList.remove('is-open');
+                        trigger.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                window.addEventListener('resize', function() {
+                    if (dropdown.classList.contains('is-open')) positionDropdown();
+                });
+            }
+        })();
+    </script>
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 </body>
 </html>
 

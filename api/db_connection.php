@@ -78,5 +78,10 @@ function getDB() {
     return $db->getConnection();
 }
 
+/** Alias para compatibilidad con chat_api.php e instalar_chat.php */
+function getConnection() {
+    return getDB();
+}
+
 ?>
 

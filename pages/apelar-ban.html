@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apelar Ban - Contraloría Social Tamaulipas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Apelar Ban - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
     <link rel="stylesheet" href="../assets/css/styles.css">
     <style>
         .apelacion-container {
@@ -11,7 +13,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #4D8143 30%, #ffffff 70%);
+            background: white;
             padding: 2rem;
         }
         
@@ -145,9 +147,9 @@
             <div class="apelacion-info">
                 <strong>⚠️ Información importante:</strong>
                 <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-                    <li>Solo puedes apelar una vez por ban</li>
+                    <li>Puedes apelar hasta 3 veces en total</li>
                     <li>Tu apelación será revisada por un administrador</li>
-                    <li>Si es aprobada, serás desbaneado una última vez</li>
+                    <li>Si es aprobada, serás desbaneado (hasta 3 veces en total)</li>
                     <li>El motivo de la apelación debe tener al menos 20 caracteres</li>
                 </ul>
             </div>
@@ -167,15 +169,36 @@
                 <button type="submit" class="btn-submit" id="submitBtn">Enviar Apelación</button>
             </form>
             
-            <a href="login.html" class="btn-back">← Volver al inicio de sesión</a>
+            <a href="inicio.html" class="btn-back">← Volver al menú</a>
         </div>
     </div>
     
     <script src="../assets/js/auth.js"></script>
     <script>
-        // Obtener ban_id del sessionStorage
+        // Obtener información del ban del sessionStorage
         const banId = sessionStorage.getItem('ban_id_apelar');
+        const usuarioId = sessionStorage.getItem('usuario_id_apelar'); // Usuario ID guardado directamente
         const email = sessionStorage.getItem('email_apelar');
+        const banMotivo = sessionStorage.getItem('ban_motivo');
+        const banTipo = sessionStorage.getItem('ban_tipo');
+        
+        // Mostrar información del ban si está disponible
+        if (banMotivo) {
+            const infoDiv = document.querySelector('.apelacion-info');
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <strong>⚠️ Información de tu ban:</strong>
+                    <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                        <li><strong>Tipo:</strong> ${banTipo === 'permanente' ? 'Ban Permanente' : 'Ban Temporal'}</li>
+                        <li><strong>Motivo:</strong> ${banMotivo}</li>
+                        <li>Puedes apelar hasta 3 veces en total</li>
+                        <li>Tu apelación será revisada por un administrador</li>
+                        <li>Si es aprobada, serás desbaneado (hasta 3 veces en total)</li>
+                        <li>El motivo de la apelación debe tener al menos 20 caracteres</li>
+                    </ul>
+                `;
+            }
+        }
         
         if (!banId) {
             document.getElementById('errorMessage').textContent = 'No se encontró información del ban. Por favor, intenta iniciar sesión nuevamente.';
@@ -215,39 +238,54 @@
                 return;
             }
             
-            // Obtener usuario_id del email mediante una consulta al servidor
-            let usuarioId = null;
-            try {
-                // Intentar obtener el usuario desde auth.js si está disponible
-                if (window.authSystem) {
-                    const currentUser = window.authSystem.getCurrentUser();
-                    if (currentUser && currentUser.email === email) {
-                        usuarioId = currentUser.id;
+            // Obtener usuario_id (ya debería estar guardado en sessionStorage)
+            let usuarioIdFinal = usuarioId;
+            
+            // Si no está guardado, intentar obtenerlo de otras fuentes
+            if (!usuarioIdFinal) {
+                try {
+                    // Intentar obtener el usuario desde auth.js si está disponible
+                    if (window.authSystem) {
+                        const currentUser = window.authSystem.getCurrentUser();
+                        if (currentUser && currentUser.id) {
+                            usuarioIdFinal = currentUser.id;
+                            // Guardarlo para futuras referencias
+                            sessionStorage.setItem('usuario_id_apelar', currentUser.id);
+                        }
                     }
-                }
-                
-                // Si no hay usuario en sesión, obtenerlo del servidor usando el email
-                if (!usuarioId && email) {
-                    const userResponse = await fetch(`../api/api.php?action=get_user_by_email&email=${encodeURIComponent(email)}`);
-                    const userData = await userResponse.json();
-                    if (userData.success && userData.user) {
-                        usuarioId = userData.user.id;
+                    
+                    // Si aún no hay usuario_id, obtenerlo del servidor usando el email
+                    if (!usuarioIdFinal && email) {
+                        const currentUrl = window.location.href.toLowerCase();
+                        const isHostinger = currentUrl.indexOf('hostinger') !== -1 || 
+                                           currentUrl.indexOf('hostingersite.com') !== -1 ||
+                                           currentUrl.indexOf('organicjournal.com.mx') !== -1;
+                        const apiUrl = isHostinger 
+                            ? `/api/api.php?action=get_user_by_email&email=${encodeURIComponent(email)}`
+                            : `../api/api.php?action=get_user_by_email&email=${encodeURIComponent(email)}`;
+                        
+                        const userResponse = await fetch(apiUrl);
+                        const userData = await userResponse.json();
+                        if (userData.success && userData.user) {
+                            usuarioIdFinal = userData.user.id;
+                            sessionStorage.setItem('usuario_id_apelar', userData.user.id);
+                        }
                     }
-                }
-                
-                if (!usuarioId) {
-                    errorDiv.textContent = 'No se pudo verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
+                    
+                    if (!usuarioIdFinal) {
+                        errorDiv.textContent = 'No se pudo verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
+                        errorDiv.classList.add('show');
+                        setTimeout(() => {
+                            window.location.href = 'inicio.html';
+                        }, 2000);
+                        return;
+                    }
+                } catch (error) {
+
+                    errorDiv.textContent = 'Error al verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
                     errorDiv.classList.add('show');
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 2000);
                     return;
                 }
-            } catch (error) {
-                console.error('Error al obtener usuario:', error);
-                errorDiv.textContent = 'Error al verificar tu identidad. Por favor, intenta iniciar sesión nuevamente.';
-                errorDiv.classList.add('show');
-                return;
             }
             
             submitBtn.disabled = true;
@@ -261,7 +299,7 @@
                     },
                     body: JSON.stringify({
                         ban_id: banId,
-                        usuario_id: usuarioId,
+                        usuario_id: usuarioIdFinal,
                         motivo_apelacion: motivoApelacion
                     })
                 });
@@ -280,7 +318,7 @@
                     sessionStorage.removeItem('email_apelar');
                     
                     setTimeout(() => {
-                        window.location.href = 'login.html';
+                        window.location.href = 'inicio.html';
                     }, 3000);
                 } else {
                     errorDiv.textContent = data.message || 'Error al enviar la apelación';
@@ -289,7 +327,7 @@
                     submitBtn.textContent = 'Enviar Apelación';
                 }
             } catch (error) {
-                console.error('Error:', error);
+
                 errorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
@@ -297,6 +335,9 @@
             }
         });
     </script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 </body>
 </html>
 

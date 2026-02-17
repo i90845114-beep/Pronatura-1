@@ -6,10 +6,11 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>Restablecer Contraseña - Contraloría Social Tamaulipas</title>
-
+    <title>Restablecer Contraseña - Organic Journal</title>
+    <link rel="icon" type="image/jpeg" href="../assets/logo.jpg">
+    <link rel="shortcut icon" type="image/jpeg" href="../assets/logo.jpg">
     <link rel="stylesheet" href="../assets/css/styles.css" id="cssLink">
     <script>
         // Corregir ruta del CSS para Hostinger
@@ -31,7 +32,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #4D8143 0%, #2c7a7b 100%);
+            background: white;
             padding: 2rem;
         }
 
@@ -190,7 +191,7 @@
         }
 
         .info-box {
-            background: #e3f2fd;
+            background: white;
             color: #1976d2;
             padding: 1rem;
             border-radius: 8px;
@@ -385,7 +386,7 @@
                     errorDiv.classList.add('show');
                 }
             } catch (error) {
-                console.error('Error:', error);
+
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Restablecer Contraseña';
                 errorDiv.textContent = 'Error de conexión. Intenta nuevamente.';
@@ -393,6 +394,9 @@
             }
         });
     </script>
+    
+    <!-- Bloquear navegación con flechas del navegador -->
+    <script src="../assets/js/block-navigation.js"></script>
 
 </body>
 
