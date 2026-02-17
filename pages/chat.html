@@ -17,13 +17,21 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #1a5f3d 0%, #2e7d32 50%, #4caf50 100%);
             height: 100vh;
+            width: 100vw;
             overflow: hidden;
+            position: fixed;
+            left: 0;
+            top: 0;
+            margin: 0;
         }
         
         /* Contenedor Principal: fallback sólido para Android WebView (backdrop-filter falla en muchos dispositivos) */
         .chat-container {
             display: flex;
             height: 100vh;
+            width: 100%;
+            max-width: 100vw;
+            overflow: hidden;
             background: rgba(255, 255, 255, 0.08);
         }
         @supports (backdrop-filter: blur(10px)) {
@@ -36,7 +44,12 @@
         /* Sidebar - Lista de Grupos: fallback para Android */
         .sidebar {
             width: 380px;
+            min-width: 0;
+            max-width: 100%;
             background: rgba(255, 255, 255, 0.98);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         @supports (backdrop-filter: blur(20px)) {
             .sidebar {
@@ -44,8 +57,7 @@
                 background: rgba(255, 255, 255, 0.95);
             }
         }
-            display: flex;
-            flex-direction: column;
+        .sidebar {
             box-shadow: 4px 0 30px rgba(0,0,0,0.1);
         }
         
@@ -157,10 +169,12 @@
             box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
         }
         
-        /* Lista de Grupos como tarjetas modernas */
+        /* Lista de Grupos: contenido dentro del marco, scroll interno */
         .grupos-list {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 15px;
             background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
         }
@@ -641,7 +655,7 @@
                     <div class="sidebar-title">
                         <h2>🌳 Grupos de Ejidos</h2>
                         <p>ProNatura - Conservación y Comunidad</p>
-                        <a href="index.html" class="btn-volver-inicio" title="Volver al inicio">← Volver al inicio</a>
+                        <a href="index.html" class="btn-volver-inicio" id="btnVolverInicio" title="Volver al inicio" rel="internal">← Volver al inicio</a>
                     </div>
                 </div>
             </div>
@@ -737,14 +751,14 @@
         document.getElementById('userAvatar').textContent = (userData.nombre || 'U').charAt(0).toUpperCase();
     }
 
-    // Cargar grupos desde la API (filtrar por estado para mostrar el chat donde aceptaron al usuario)
+    // Cargar grupos desde la API: todos=1 para mostrar todos los grupos (no solo los del estado del usuario)
     async function cargarGrupos() {
         try {
-            let url = `${API_BASE}?action=obtener_grupos`;
+            let url = `${API_BASE}?action=obtener_grupos&todos=1`;
+            if (userData.id && userData.id < 2000000000) url += `&usuario_id=${userData.id}`;
             if (userData.estado) url += `&estado=${encodeURIComponent(userData.estado)}`;
             if (userData.municipio) url += `&municipio=${encodeURIComponent(userData.municipio)}`;
             if (userData.ciudad) url += `&ciudad=${encodeURIComponent(userData.ciudad)}`;
-            if (userData.id && userData.id < 2000000000) url += `&usuario_id=${userData.id}`;
             const response = await fetch(url);
             const data = await response.json();
             
@@ -1115,6 +1129,14 @@
             e.preventDefault();
             volverAListaGrupos();
         });
+        var btnVolverInicio = document.getElementById('btnVolverInicio');
+        if (btnVolverInicio) {
+            btnVolverInicio.addEventListener('click', function(e) {
+                e.preventDefault();
+                var base = window.location.pathname.includes('/pages/') ? '../' : '';
+                window.location.href = base + 'index.html';
+            });
+        }
         
         const estadoBuscar = userData.estado || new URLSearchParams(window.location.search).get('estado');
         let grupoAbrir = null;

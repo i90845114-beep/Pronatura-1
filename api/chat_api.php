@@ -160,6 +160,7 @@ elseif ($action === 'obtener_grupos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $municipio = trim($_GET['municipio'] ?? '');
         $ciudad = trim($_GET['ciudad'] ?? '');
         $usuario_id = isset($_GET['usuario_id']) ? (int) $_GET['usuario_id'] : 0;
+        $todos = isset($_GET['todos']) && ($_GET['todos'] === '1' || $_GET['todos'] === 'true');
         
         $sql = "
             SELECT 
@@ -192,17 +193,19 @@ elseif ($action === 'obtener_grupos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         ";
         $params = [];
         
-        // Filtrar por estado: por nombre "Ejidos {estado}" o por columna estado (para grupos como "Ejido de Olmo" en Tamaulipas)
-        if ($estado !== '') {
-            $sql .= " AND (g.nombre = :estado_nombre OR (g.estado IS NOT NULL AND TRIM(g.estado) = :estado_val))";
-            $params[':estado_nombre'] = 'Ejidos ' . $estado;
-            $params[':estado_val'] = $estado;
-        }
-        
-        // Filtrar por miembro solo cuando NO se filtró por estado, para que con estado todos vean el mismo grupo y se vean los mensajes entre sí
-        if ($usuario_id > 0 && $estado === '') {
-            $sql .= " AND g.id IN (SELECT grupo_id FROM miembros_grupos WHERE usuario_id = :usuario_id AND activo = TRUE)";
-            $params[':usuario_id'] = $usuario_id;
+        // Si no se pide "todos", filtrar por estado o por miembro como antes
+        if (!$todos) {
+            // Filtrar por estado: por nombre "Ejidos {estado}" o por columna estado
+            if ($estado !== '') {
+                $sql .= " AND (g.nombre = :estado_nombre OR (g.estado IS NOT NULL AND TRIM(g.estado) = :estado_val))";
+                $params[':estado_nombre'] = 'Ejidos ' . $estado;
+                $params[':estado_val'] = $estado;
+            }
+            // Filtrar por miembro solo cuando NO se filtró por estado
+            if ($usuario_id > 0 && $estado === '') {
+                $sql .= " AND g.id IN (SELECT grupo_id FROM miembros_grupos WHERE usuario_id = :usuario_id AND activo = TRUE)";
+                $params[':usuario_id'] = $usuario_id;
+            }
         }
         
         $sql .= " ORDER BY g.nombre";
@@ -216,8 +219,8 @@ elseif ($action === 'obtener_grupos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Si hay estado + municipio (ej. Ciudad Madero), asegurar que exista el grupo por ubicación y que el usuario sea miembro
-        if ($estado !== '' && $municipio !== '' && $usuario_id > 0) {
+        // Solo inyectar grupos por ubicación cuando no se pidieron "todos" los grupos
+        if (!$todos && $estado !== '' && $municipio !== '' && $usuario_id > 0) {
             try {
                 if ($ciudad !== '') {
                     $stmtUbic = $pdo->prepare("SELECT id FROM grupos_ejidos WHERE activo = TRUE AND TRIM(estado) = ? AND TRIM(municipio) = ? AND TRIM(ciudad) = ? LIMIT 1");
@@ -266,8 +269,8 @@ elseif ($action === 'obtener_grupos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
             } catch (PDOException $e) { /* ignorar */ }
         }
         
-        // Si filtraron por estado y no hay ningún grupo: usar el grupo existente del estado (para que dos usuarios vean el mismo chat) o crear uno
-        if ($estado !== '' && empty($grupos)) {
+        // Si filtraron por estado y no hay ningún grupo (y no se pidieron todos): usar o crear grupo del estado
+        if (!$todos && $estado !== '' && empty($grupos)) {
             try {
                 $nombreGrupo = 'Ejidos ' . $estado;
                 $stmtExistente = $pdo->prepare("SELECT id FROM grupos_ejidos WHERE activo = TRUE AND nombre = ? LIMIT 1");
